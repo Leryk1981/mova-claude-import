@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import type { ImportOptions, ImportResult } from "./index.js";
 import { redactText, redactJson, RedactionHit } from "./redaction.js";
 import Ajv from "ajv";
@@ -12,6 +13,7 @@ import { stableStringify } from "./stable_json.js";
 import { createExportZipV0 } from "./export_zip_v0.js";
 import { buildMovaOverlayV0, buildMovaControlEntryV0, MOVA_CONTROL_ENTRY_MARKER } from "./mova_overlay_v0.js";
 import { scanInputPolicyV0 } from "./input_policy_v0.js";
+import { EvidenceWriter } from "@leryk1981/mova-core-engine";
 
 type Found = {
   claudeMdPath?: string;
@@ -123,6 +125,23 @@ async function loadAndRedactJson(p: string) {
   return { raw, parsed, redacted, hits };
 }
 
+function orderedObject(obj: any) {
+  return JSON.parse(stableStringify(obj));
+}
+
+async function writeEvidenceArtifact(writer: EvidenceWriter, baseDir: string, rel: string, obj: any) {
+  const target = await writer.writeArtifact(baseDir, rel, orderedObject(obj));
+  await fs.writeFile(target, stableStringify(obj) + "\n", "utf8");
+}
+
+async function loadMovaSpecSchema(fileName: string) {
+  const require = createRequire(import.meta.url);
+  const pkgPath = require.resolve("@leryk1981/mova-spec/package.json");
+  const schemaPath = path.join(path.dirname(pkgPath), "schemas", fileName);
+  const raw = await fs.readFile(schemaPath, "utf8");
+  return JSON.parse(raw);
+}
+
 export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   const projectDir = path.resolve(opts.projectDir);
   const outRoot = path.resolve(opts.outDir);
@@ -175,6 +194,7 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   const runId = computeRunId(inputs.map((x) => `${x.rel}:${x.sha256}`));
 
   const movaBase = path.join(outRoot, "mova", "claude_import", "v0");
+  const evidenceWriter = new EvidenceWriter();
   const overlayParams = {
     contractsDir: "mova/claude_import/v0/contracts/",
     artifactsDir: "mova/claude_import/v0/",
@@ -204,8 +224,8 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
       quality_version: "quality_v0",
       export_zip_version: "export_zip_v0",
     };
-    await writeJsonFile(path.join(movaBase, "VERSION.json"), versionInfo);
-    await writeJsonFile(path.join(movaBase, "input_policy_report_v0.json"), inputPolicy);
+    await writeEvidenceArtifact(evidenceWriter, movaBase, "VERSION.json", versionInfo);
+    await writeEvidenceArtifact(evidenceWriter, movaBase, "input_policy_report_v0.json", inputPolicy);
   }
 
   if (opts.strict && !inputPolicy.ok) {
@@ -244,13 +264,70 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
           denied_count: inputPolicy.denied.length,
         },
       };
-      await writeJsonFile(path.join(movaBase, "import_manifest.json"), manifest);
-      await writeJsonFile(path.join(movaBase, "episode_import_run.json"), episode);
+      await writeEvidenceArtifact(evidenceWriter, movaBase, "import_manifest.json", manifest);
+      await writeEvidenceArtifact(evidenceWriter, movaBase, "episode_import_run.json", episode);
     }
     return {
       ok: false,
       exit_code: 2,
       run_id: deniedRunId,
+      out_dir: outRoot,
+      imported: { claude_md: false, mcp_json: false, skills_count: 0 },
+      skipped: found.skipped,
+      lint_summary: "lint_v0: skipped",
+    };
+  }
+
+  let movaSpecSchemas: { instruction_profile: any; mcp_servers: any; core: any };
+  try {
+    movaSpecSchemas = {
+      instruction_profile: await loadMovaSpecSchema("ds.instruction_profile_core_v1.schema.json"),
+      mcp_servers: await loadMovaSpecSchema("ds.runtime_binding_core_v1.schema.json"),
+      core: await loadMovaSpecSchema("ds.mova_schema_core_v1.schema.json"),
+    };
+  } catch (err: any) {
+    if (!opts.dryRun) {
+      const manifest = {
+        tool: "mova-claude-import",
+        version: "v0",
+        run_id: runId,
+        project_dir: projectDir,
+        emit_profile: opts.emitProfile,
+        inputs: [],
+        imported: {
+          claude_md: false,
+          mcp_json: false,
+          skills_count: 0,
+        },
+        skipped: found.skipped,
+        input_policy_ok: inputPolicy.ok,
+        failure: {
+          reason: "mova_spec_schema_missing",
+        },
+      };
+      const episode = {
+        episode_id: runId,
+        recorded_at: "1970-01-01T00:00:00.000Z",
+        episode_type: "claude_import_run_v0",
+        run_id: runId,
+        ok: false,
+        result_core: {
+          imported: manifest.imported,
+          inputs_count: 0,
+          validation: null,
+        },
+        failure: {
+          reason: "mova_spec_schema_missing",
+          detail: String(err?.message ?? err),
+        },
+      };
+      await writeEvidenceArtifact(evidenceWriter, movaBase, "import_manifest.json", manifest);
+      await writeEvidenceArtifact(evidenceWriter, movaBase, "episode_import_run.json", episode);
+    }
+    return {
+      ok: false,
+      exit_code: 2,
+      run_id: runId,
       out_dir: outRoot,
       imported: { claude_md: false, mcp_json: false, skills_count: 0 },
       skipped: found.skipped,
@@ -314,6 +391,8 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   // Validation with Ajv
   const ajv = new (Ajv as any)({ allErrors: true, strict: true, validateSchema: false });
   (addFormats as any)(ajv);
+  const coreSchemaId = movaSpecSchemas.core?.$id ?? "https://mova.dev/schemas/ds.mova_schema_core_v1.schema.json";
+  ajv.addSchema(movaSpecSchemas.core, coreSchemaId);
   const schemaPath = (name: string) => fileURLToPath(new URL(`../schemas/${name}`, import.meta.url));
   const schemas = {
     instruction_profile: JSON.parse(
@@ -329,11 +408,21 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   const validateInstruction = ajv.compile(schemas.instruction_profile);
   const validateSkills = ajv.compile(schemas.skills_catalog);
   const validateMcp = ajv.compile(schemas.mcp_servers);
+  const validateSpecInstruction = ajv.compile(movaSpecSchemas.instruction_profile);
+  const validateSpecMcp = ajv.compile(movaSpecSchemas.mcp_servers);
 
   const validationReport = {
     instruction_profile: validateInstruction(instructionProfile),
     skills_catalog: validateSkills(skillsCatalog),
     mcp_servers: validateMcp(mcpServers),
+    mova_spec: {
+      instruction_profile: validateSpecInstruction(instructionProfile),
+      mcp_servers: validateSpecMcp(mcpServers),
+      errors: {
+        instruction_profile: validateSpecInstruction.errors,
+        mcp_servers: validateSpecMcp.errors,
+      },
+    },
     errors: {
       instruction_profile: validateInstruction.errors,
       skills_catalog: validateSkills.errors,
@@ -375,9 +464,9 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   };
 
   if (!opts.dryRun) {
-    await writeJsonFile(path.join(movaBase, "import_manifest.json"), manifest);
-    await writeJsonFile(path.join(movaBase, "redaction_report.json"), redactionReport);
-    await writeJsonFile(path.join(movaBase, "episode_import_run.json"), episode);
+    await writeEvidenceArtifact(evidenceWriter, movaBase, "import_manifest.json", manifest);
+    await writeEvidenceArtifact(evidenceWriter, movaBase, "redaction_report.json", redactionReport);
+    await writeEvidenceArtifact(evidenceWriter, movaBase, "episode_import_run.json", episode);
   }
 
   let lintReport: LintReportV0 = {
@@ -392,7 +481,7 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
       emitProfile: opts.emitProfile,
       mcpExpected: Boolean(found.mcpJsonPath),
     });
-    await writeJsonFile(path.join(movaBase, "lint_report_v0.json"), lintReport);
+    await writeEvidenceArtifact(evidenceWriter, movaBase, "lint_report_v0.json", lintReport);
   }
 
   if (!opts.dryRun && opts.emitZip) {
@@ -404,7 +493,7 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
       files_count: exportZip.files.length,
       files: exportZip.files,
     };
-    await writeJsonFile(path.join(movaBase, "export_manifest_v0.json"), exportManifest);
+    await writeEvidenceArtifact(evidenceWriter, movaBase, "export_manifest_v0.json", exportManifest);
   }
 
   return {
