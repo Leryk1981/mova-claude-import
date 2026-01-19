@@ -1,0 +1,30 @@
+{
+  "name": "mova-claude-import",
+  "version": "0.1.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test",
+    "build": "tsc -p tsconfig.json",
+    "validate": "npm run build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@leryk1981/mova-core-engine": "^0.1.1",
+    "@leryk1981/mova-spec": "^4.1.1"
+  },
+  "type": "module",
+  "bin": {
+    "mova-claude-import": "dist/cli.js"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./dist/index.js"
+  }
+}

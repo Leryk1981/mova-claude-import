@@ -1,0 +1,58 @@
+# ===== basics =====
+.DS_Store
+Thumbs.db
+
+# ===== logs =====
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ===== deps =====
+node_modules/
+jspm_packages/
+bower_components/
+
+# ===== caches =====
+.npm/
+.eslintcache
+.cache/
+.tern-port
+.node_repl_history
+.yarn-integrity
+
+# ===== build outputs =====
+dist/
+build/
+build/Release/
+out/
+coverage/
+.nyc_output/
+
+# ===== temp =====
+.tmp/
+.tmp_test/
+tmp/
+pids/
+*.pid
+*.pid.lock
+*.seed
+.lock-wscript
+
+# ===== env / secrets =====
+.env
+.env.*
+!.env.example
+
+# ===== packaging =====
+*.tgz
+
+# ===== mova-claude-import runtime artifacts (local only) =====
+artifacts/
+mova/claude_import/v0/runs/
+mova/claude_import/v0/exports/
+
+# (если появится локальный кеш инструментов)
+.mova/
