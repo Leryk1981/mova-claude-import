@@ -14,6 +14,7 @@ import { createExportZipV0 } from "./export_zip_v0.js";
 import { buildMovaOverlayV0, buildMovaControlEntryV0, MOVA_CONTROL_ENTRY_MARKER } from "./mova_overlay_v0.js";
 import { scanInputPolicyV0 } from "./input_policy_v0.js";
 import { EvidenceWriter } from "@leryk1981/mova-core-engine";
+import { MOVA_SPEC_BINDINGS_V0 } from "./mova_spec_bindings_v0.js";
 
 type Found = {
   claudeMdPath?: string;
@@ -140,6 +141,12 @@ async function loadMovaSpecSchema(fileName: string) {
   const schemaPath = path.join(path.dirname(pkgPath), "schemas", fileName);
   const raw = await fs.readFile(schemaPath, "utf8");
   return JSON.parse(raw);
+}
+
+async function loadMovaSpecSchemaById(schemaId: string) {
+  const fileName = schemaId.split("/").pop();
+  if (!fileName) throw new Error(`Invalid schema id: ${schemaId}`);
+  return loadMovaSpecSchema(fileName);
 }
 
 export async function runImport(opts: ImportOptions): Promise<ImportResult> {
@@ -281,9 +288,9 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   let movaSpecSchemas: { instruction_profile: any; mcp_servers: any; core: any };
   try {
     movaSpecSchemas = {
-      instruction_profile: await loadMovaSpecSchema("ds.instruction_profile_core_v1.schema.json"),
-      mcp_servers: await loadMovaSpecSchema("ds.runtime_binding_core_v1.schema.json"),
-      core: await loadMovaSpecSchema("ds.mova_schema_core_v1.schema.json"),
+      instruction_profile: await loadMovaSpecSchemaById(MOVA_SPEC_BINDINGS_V0.instruction_profile_id),
+      mcp_servers: await loadMovaSpecSchemaById(MOVA_SPEC_BINDINGS_V0.mcp_servers_id),
+      core: await loadMovaSpecSchemaById(MOVA_SPEC_BINDINGS_V0.core_schema_id),
     };
   } catch (err: any) {
     if (!opts.dryRun) {
