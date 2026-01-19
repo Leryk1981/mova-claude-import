@@ -1,0 +1,18 @@
+{
+  "anthropic": {
+    "claude_md": {
+      "inject_control_entry": true,
+      "marker": "<!-- MOVA_CONTROL_ENTRY_V0 -->"
+    },
+    "mcp": {
+      "servers": {}
+    }
+  },
+  "apply": {
+    "default_apply_mode": "preview"
+  },
+  "kind": "ds",
+  "mode": "report_only",
+  "title": "Claude Control Profile v0",
+  "version": "0.1.0"
+}
