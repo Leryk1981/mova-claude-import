@@ -35,4 +35,10 @@ test("profile v0 output includes required files", async () => {
   await assertExists(path.join(out, ".claude", "commands", "mova_lint.md"));
   await assertExists(path.join(out, ".claude", "skills", "mova-layer-v0", "SKILL.md"));
   await assertExists(path.join(out, "mova", "claude_import", "v0", "lint_report_v0.json"));
+  const versionPath = path.join(out, "mova", "claude_import", "v0", "VERSION.json");
+  await assertExists(versionPath);
+  const version = JSON.parse(await fs.readFile(versionPath, "utf8"));
+  assert.equal(version.tool_name, "mova-claude-import");
+  assert.ok(version.tool_version);
+  assert.equal(version.profile_version, "anthropic_profile_v0");
 });

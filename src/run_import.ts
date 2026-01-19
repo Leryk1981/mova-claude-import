@@ -34,6 +34,17 @@ async function sha256File(p: string): Promise<string> {
   return crypto.createHash("sha256").update(buf).digest("hex");
 }
 
+async function readToolVersion(): Promise<string> {
+  try {
+    const pkgPath = fileURLToPath(new URL("../package.json", import.meta.url));
+    const raw = await fs.readFile(pkgPath, "utf8");
+    const parsed = JSON.parse(raw);
+    return typeof parsed.version === "string" ? parsed.version : "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
 function isLocalExcluded(rel: string, includeLocal: boolean): boolean {
   if (includeLocal) return false;
   const base = path.basename(rel);
@@ -182,6 +193,18 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   }));
 
   if (!opts.dryRun) {
+    const toolVersion = await readToolVersion();
+    const versionInfo = {
+      tool_name: "mova-claude-import",
+      tool_version: toolVersion,
+      profile_version: "anthropic_profile_v0",
+      overlay_version: "mova_control_overlay_v0",
+      input_policy_version: "input_policy_v0",
+      lint_version: "lint_v0",
+      quality_version: "quality_v0",
+      export_zip_version: "export_zip_v0",
+    };
+    await writeJsonFile(path.join(movaBase, "VERSION.json"), versionInfo);
     await writeJsonFile(path.join(movaBase, "input_policy_report_v0.json"), inputPolicy);
   }
 
