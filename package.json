@@ -6,6 +6,7 @@
     "test": "node --test",
     "build": "tsc -p tsconfig.json",
     "validate": "npm run build",
+    "deps:audit": "node tools/deps_audit_v0.mjs",
     "quality": "node dist/quality_v0.js --suite pos",
     "quality:neg": "node dist/quality_v0.js --suite neg"
   },

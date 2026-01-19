@@ -1,5 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { runImport } from "./run_import.js";
 import { stableStringify } from "./stable_json.js";
 
@@ -24,6 +26,8 @@ type QualityCaseReport = {
   exit_code?: number;
 };
 
+const execFileP = promisify(execFile);
+
 function getArg(name: string): string | undefined {
   const idx = process.argv.indexOf(name);
   if (idx === -1) return undefined;
@@ -42,6 +46,18 @@ async function exists(p: string): Promise<boolean> {
 async function readJson(p: string): Promise<any> {
   const raw = await fs.readFile(p, "utf8");
   return JSON.parse(raw);
+}
+
+async function runDepsAudit() {
+  try {
+    await execFileP("node", ["tools/deps_audit_v0.mjs"], { cwd: process.cwd() });
+  } catch (err: any) {
+    const code = err?.code ?? 1;
+    if (code === 2) {
+      throw new Error("deps_audit_failed");
+    }
+    throw err;
+  }
 }
 
 async function writeJson(p: string, obj: any) {
@@ -165,6 +181,9 @@ async function main() {
     process.exit(2);
   }
   const suite = suiteArg as "pos" | "neg";
+  if (suite === "pos") {
+    await runDepsAudit();
+  }
   const fixturesRoot = path.join(process.cwd(), "fixtures", suite);
   const entries = await fs.readdir(fixturesRoot, { withFileTypes: true });
   const cases = entries.filter((e) => e.isDirectory()).map((e) => e.name).sort();
