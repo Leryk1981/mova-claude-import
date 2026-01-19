@@ -14,13 +14,14 @@ function usage(exitCode = 0) {
     "mova-claude-import (v0)",
     "",
     "Usage:",
-    "  mova-claude-import --project <dir> [--out <dir>] [--dry-run] [--strict] [--include-local] [--include-user-settings] [--no-emit-profile] [--zip] [--zip-name <name>]",
+    "  mova-claude-import --project <dir> [--out <dir>] [--dry-run] [--strict] [--include-local] [--include-user-settings] [--no-emit-profile] [--no-emit-overlay] [--zip] [--zip-name <name>]",
     "  mova-claude-import init --out <dir> [--zip]",
     "",
     "Notes:",
     "  - CLAUDE.local.md and *.local.* are excluded unless --include-local",
     "  - user-level settings are excluded unless --include-user-settings",
     "  - profile emission is enabled by default; use --no-emit-profile to skip",
+    "  - overlay emission is enabled by default; use --no-emit-overlay to skip",
     "  - zip export is disabled by default; use --zip to enable",
     "  - init creates a clean Anthropic profile v0 scaffold",
   ].join("\n"));
@@ -59,6 +60,7 @@ if (subcommand === "init") {
 
   const out = getArg("--out") || project;
   const emitProfile = !hasFlag("--no-emit-profile");
+  const emitOverlay = !hasFlag("--no-emit-overlay");
   const emitZip = hasFlag("--zip");
   const zipName = getArg("--zip-name");
 
@@ -70,6 +72,7 @@ if (subcommand === "init") {
     dryRun: hasFlag("--dry-run"),
     strict: hasFlag("--strict"),
     emitProfile,
+    emitOverlay,
     emitZip,
     zipName,
   }).then((res) => {

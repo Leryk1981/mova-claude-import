@@ -10,6 +10,7 @@ import { getAnthropicProfileV0Files } from "./anthropic_profile_v0.js";
 import { lintV0, type LintReportV0 } from "./lint_v0.js";
 import { stableStringify } from "./stable_json.js";
 import { createExportZipV0 } from "./export_zip_v0.js";
+import { buildMovaOverlayV0, buildMovaControlEntryV0, MOVA_CONTROL_ENTRY_MARKER } from "./mova_overlay_v0.js";
 
 type Found = {
   claudeMdPath?: string;
@@ -158,6 +159,16 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   const runId = computeRunId(inputs.map((x) => `${x.rel}:${x.sha256}`));
 
   const movaBase = path.join(outRoot, "mova", "claude_import", "v0");
+  const overlayParams = {
+    contractsDir: "mova/claude_import/v0/contracts/",
+    artifactsDir: "mova/claude_import/v0/",
+    instructionProfileFile: "instruction_profile_v0.json",
+    skillsCatalogFile: "skills_catalog_v0.json",
+    mcpServersFile: "mcp_servers_v0.json",
+    lintReportFile: "lint_report_v0.json",
+    qualityReportFile: "quality_report_v0.json",
+    exportManifestFile: "export_manifest_v0.json",
+  };
   const normalizedSkills = Object.entries(skillRedactedMap).map(([rel, body]) => ({
     rel,
     body,
@@ -167,6 +178,14 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
 
   if (!opts.dryRun && opts.emitProfile) {
     const profileFiles = getAnthropicProfileV0Files();
+    if (opts.emitOverlay) {
+      const controlEntry = buildMovaControlEntryV0(overlayParams);
+      const claude = profileFiles["CLAUDE.md"] ?? "";
+      if (!claude.includes(MOVA_CONTROL_ENTRY_MARKER)) {
+        profileFiles["CLAUDE.md"] = `${controlEntry}\n${claude}`;
+      }
+      Object.assign(profileFiles, buildMovaOverlayV0(overlayParams));
+    }
     for (const [rel, content] of Object.entries(profileFiles)) {
       await writeTextFile(path.join(outRoot, rel), content);
     }

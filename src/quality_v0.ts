@@ -83,6 +83,7 @@ async function runCase(suite: "pos" | "neg", caseId: string, fixturesRoot: strin
     dryRun: false,
     strict: false,
     emitProfile: true,
+    emitOverlay: true,
     emitZip: true,
     zipName: "export.zip",
   });
