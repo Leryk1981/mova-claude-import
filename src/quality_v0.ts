@@ -4,6 +4,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { runImport } from "./run_import.js";
 import { stableStringify } from "./stable_json.js";
+import { controlCheckV0 } from "./control_check_v0.js";
 
 type QualityCaseReport = {
   profile_version: "v0";
@@ -195,6 +196,19 @@ async function main() {
   const reports: QualityCaseReport[] = [];
   for (const caseId of cases) {
     reports.push(await runCase(suite, caseId, fixturesRoot));
+  }
+
+  if (suite === "pos") {
+    const projectDir = path.join(fixturesRoot, "control_basic_project");
+    const profilePath = path.join(
+      process.cwd(),
+      "fixtures",
+      "pos",
+      "control_profile_filled",
+      "claude_control_profile_v0.json"
+    );
+    const outDir = path.join(process.cwd(), ".tmp_test", "quality", "control_check");
+    await controlCheckV0(projectDir, profilePath, outDir);
   }
 
   const failed = reports.filter((r) => !r.ok);

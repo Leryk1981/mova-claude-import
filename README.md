@@ -7,7 +7,7 @@ Deterministic import/rebuild tool for producing a clean Anthropic/Claude profile
 ### Existing Anthropic/Claude project -> controlled output
 
 ```
-npx mova-claude-import --project <in> --out <out> --zip --strict
+npx mova-claude-import --project <in> --out <out> --zip
 ```
 
 Output:
@@ -21,6 +21,14 @@ Control layer contracts live under `schemas/claude_control/v0/` (ds/env/global).
 
 ```
 npx mova-claude-import init --out <dir> --zip
+```
+
+### Control layer workflow (preview by default)
+
+```
+npx mova-claude-import control prefill --project <in> --out <out>
+npx mova-claude-import control check --project <in> --profile <out>/claude_control_profile_v0.json
+npx mova-claude-import control apply --project <in> --profile <out>/claude_control_profile_v0.json --mode apply
 ```
 
 ## Flags (short list)

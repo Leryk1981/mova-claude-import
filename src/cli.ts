@@ -1,5 +1,8 @@
 import { runImport } from "./run_import.js";
 import { initProfileV0 } from "./init_v0.js";
+import { controlPrefillV0 } from "./control_prefill_v0.js";
+import { controlCheckV0 } from "./control_check_v0.js";
+import { controlApplyV0 } from "./control_apply_v0.js";
 
 function getArg(name: string): string | undefined {
   const idx = process.argv.indexOf(name);
@@ -16,6 +19,9 @@ function usage(exitCode = 0) {
     "Usage:",
     "  mova-claude-import --project <dir> [--out <dir>] [--dry-run] [--strict] [--include-local] [--include-user-settings] [--no-emit-profile] [--no-emit-overlay] [--zip] [--zip-name <name>]",
     "  mova-claude-import init --out <dir> [--zip]",
+    "  mova-claude-import control prefill --project <dir> --out <dir> [--include-local]",
+    "  mova-claude-import control check --project <dir> --profile <file>",
+    "  mova-claude-import control apply --project <dir> --profile <file> [--mode preview|apply]",
     "",
     "Notes:",
     "  - CLAUDE.local.md and *.local.* are excluded unless --include-local",
@@ -24,6 +30,7 @@ function usage(exitCode = 0) {
     "  - overlay emission is enabled by default; use --no-emit-overlay to skip",
     "  - zip export is disabled by default; use --zip to enable",
     "  - init creates a clean Anthropic profile v0 scaffold",
+    "  - control commands run in preview by default",
   ].join("\n"));
   process.exit(exitCode);
 }
@@ -51,6 +58,76 @@ if (subcommand === "init") {
       console.error(err);
       process.exit(1);
     });
+} else if (subcommand === "control") {
+  const action = process.argv[3];
+  const project = getArg("--project");
+  if (!project) {
+    usage(2);
+    process.exit(2);
+  }
+  if (action === "prefill") {
+    const out = getArg("--out");
+    if (!out) {
+      usage(2);
+      process.exit(2);
+    }
+    controlPrefillV0(project, out)
+      .then((res) => {
+        console.log([
+          "control prefill: ok",
+          `profile: ${res.profile_path}`,
+          `report: ${res.report_path}`,
+        ].join("\n"));
+        process.exit(0);
+      })
+      .catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+  } else if (action === "check") {
+    const profile = getArg("--profile");
+    if (!profile) {
+      usage(2);
+      process.exit(2);
+    }
+    const out = getArg("--out") || project;
+    controlCheckV0(project, profile, out)
+      .then((res) => {
+        console.log([
+          "control check: ok",
+          `plan: ${res.plan_path}`,
+          `summary: ${res.summary_path}`,
+        ].join("\n"));
+        process.exit(0);
+      })
+      .catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+  } else if (action === "apply") {
+    const profile = getArg("--profile");
+    if (!profile) {
+      usage(2);
+      process.exit(2);
+    }
+    const out = getArg("--out") || project;
+    const mode = getArg("--mode");
+    controlApplyV0(project, profile, out, mode)
+      .then((res) => {
+        console.log([
+          "control apply: ok",
+          `report: ${res.report_path}`,
+        ].join("\n"));
+        process.exit(0);
+      })
+      .catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+  } else {
+    usage(2);
+    process.exit(2);
+  }
 } else {
   const project = getArg("--project");
   if (!project) {

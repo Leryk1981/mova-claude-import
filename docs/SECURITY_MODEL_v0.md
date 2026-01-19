@@ -18,3 +18,6 @@
 - This tool is a deterministic importer/rebuilder.
 - It does not execute skills, commands, or MCP side effects.
 - Strict mode is enforced in CI/quality, not enabled by default for users.
+
+Control commands are preview-by-default and only apply changes when explicitly requested.
+Users control policy by editing the control profile.

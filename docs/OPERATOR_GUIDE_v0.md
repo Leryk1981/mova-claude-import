@@ -54,3 +54,9 @@ Verify `export_manifest_v0.json.zip_sha256` against the actual zip.
 
 - Exit code 2: strict input policy deny
 - Check `mova/claude_import/v0/input_policy_report_v0.json`
+
+## Control commands
+
+- `control prefill`: create/update `claude_control_profile_v0.json` plus `prefill_report_v0.json`
+- `control check`: preview-only plan and summary in `mova/claude_control/v0/runs/<run_id>/`
+- `control apply`: apply changes (default preview) with report in `mova/claude_control/v0/runs/<run_id>/`
