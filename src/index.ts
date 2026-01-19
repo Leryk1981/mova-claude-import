@@ -8,6 +8,7 @@ export type ImportOptions = {
   emitProfile: boolean;
   emitZip: boolean;
   zipName?: string;
+  emitOverlay: boolean;
 };
 
 export type ImportResult = {
