@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { EvidenceWriter, EpisodeWriter } from "@leryk1981/mova-core-engine";
 import type { ImportOptions, ImportResult } from "./index.js";
 import { redactText, redactJson, stableSha256, RedactionHit } from "./redaction.js";
@@ -82,13 +83,6 @@ function computeRunId(hashes: string[]): string {
   return h.digest("hex").slice(0, 16);
 }
 
-/** Helper to write a redacted file */
-async function writeRedactedFile(base: string, runId: string, rel: string, content: string) {
-  const outPath = path.join(base, "runs", runId, "sources", rel);
-  await fs.mkdir(path.dirname(outPath), { recursive: true });
-  await fs.writeFile(outPath, content, "utf8");
-}
-
 /** Helper to write a JSON contract */
 async function writeContract(base: string, runId: string, name: string, obj: any) {
   const outPath = path.join(base, "runs", runId, "contracts", name);
@@ -152,15 +146,6 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   const baseRun = path.join(outDir, "mova", "claude_import", "v0");
   const runBase = path.join(baseRun, "runs", runId);
 
-  // Write redacted sources
-  if (!opts.dryRun) {
-    if (found.claudeMdPath) await writeRedactedFile(baseRun, runId, "CLAUDE.md", claudeMdRedacted);
-    if (found.mcpJsonPath) await writeRedactedFile(baseRun, runId, ".mcp.json", mcpJsonRedacted);
-    for (const [rel, content] of Object.entries(skillRedactedMap)) {
-      await writeRedactedFile(baseRun, runId, rel, content);
-    }
-  }
-
   // Build contracts
   const instructionProfile = {
     kind: "instruction_profile_v0",
@@ -194,17 +179,18 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   }
 
   // Validation with Ajv
-  const ajv = new (Ajv as any)({ allErrors: true, strict: true });
+  const ajv = new (Ajv as any)({ allErrors: true, strict: true, validateSchema: false });
   (addFormats as any)(ajv);
+  const schemaPath = (name: string) => fileURLToPath(new URL(`../schemas/${name}`, import.meta.url));
   const schemas = {
     instruction_profile: JSON.parse(
-      await fs.readFile(path.join("schemas", "ds.claude_import.instruction_profile_v0.schema.json"), "utf8")
+      await fs.readFile(schemaPath("ds.claude_import.instruction_profile_v0.schema.json"), "utf8")
     ),
     skills_catalog: JSON.parse(
-      await fs.readFile(path.join("schemas", "ds.claude_import.skills_catalog_v0.schema.json"), "utf8")
+      await fs.readFile(schemaPath("ds.claude_import.skills_catalog_v0.schema.json"), "utf8")
     ),
     mcp_servers: JSON.parse(
-      await fs.readFile(path.join("schemas", "ds.claude_import.mcp_servers_v0.schema.json"), "utf8")
+      await fs.readFile(schemaPath("ds.claude_import.mcp_servers_v0.schema.json"), "utf8")
     ),
   };
   const validateInstruction = ajv.compile(schemas.instruction_profile);

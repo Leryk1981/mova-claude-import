@@ -1,0 +1,48 @@
+{
+  "properties": {
+    "profile_version": {
+      "type": "string",
+      "const": "v0"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "required": [
+          "skill_id",
+          "rel_dir",
+          "skill_md"
+        ],
+        "properties": {
+          "skill_md": {
+            "type": "string"
+          },
+          "assets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "skill_id": {
+            "type": "string"
+          },
+          "rel_dir": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object"
+      }
+    }
+  },
+  "type": "object",
+  "$id": "ds.claude_import.skills_catalog_v0",
+  "required": [
+    "profile_version",
+    "skills"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false
+}

@@ -1,0 +1,47 @@
+{
+  "properties": {
+    "profile_version": {
+      "type": "string",
+      "const": "v0"
+    },
+    "servers": {
+      "type": "array",
+      "items": {
+        "required": [
+          "name",
+          "command"
+        ],
+        "properties": {
+          "command": {
+            "type": "string"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "env_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object"
+      }
+    }
+  },
+  "type": "object",
+  "$id": "ds.claude_import.mcp_servers_v0",
+  "required": [
+    "profile_version",
+    "servers"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false
+}

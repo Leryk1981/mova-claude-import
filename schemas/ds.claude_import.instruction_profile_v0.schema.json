@@ -1,0 +1,31 @@
+{
+  "properties": {
+    "profile_version": {
+      "type": "string",
+      "const": "v0"
+    },
+    "anchors": {
+      "properties": {
+        "mova_entry": {
+          "type": "string"
+        },
+        "normalized_project": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "claude_md": {
+      "type": "string"
+    }
+  },
+  "type": "object",
+  "$id": "ds.claude_import.instruction_profile_v0",
+  "required": [
+    "profile_version",
+    "claude_md"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false
+}
