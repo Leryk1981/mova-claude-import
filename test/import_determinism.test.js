@@ -7,6 +7,31 @@ import { promisify } from "node:util";
 
 const execFileP = promisify(execFile);
 
+async function listFilesRec(dir) {
+  const out = [];
+  const stack = [dir];
+  while (stack.length) {
+    const current = stack.pop();
+    const entries = await fs.readdir(current, { withFileTypes: true });
+    for (const e of entries) {
+      const abs = path.join(current, e.name);
+      if (e.isDirectory()) stack.push(abs);
+      else if (e.isFile()) out.push(abs);
+    }
+  }
+  return out;
+}
+
+async function readOutputSnapshot(root) {
+  const files = await listFilesRec(root);
+  const snapshot = {};
+  for (const abs of files) {
+    const rel = path.relative(root, abs).replace(/\\/g, "/");
+    snapshot[rel] = await fs.readFile(abs, "utf8");
+  }
+  return JSON.stringify(snapshot, Object.keys(snapshot).sort(), 2);
+}
+
 test("import is deterministic for same inputs", async () => {
   const tmp = path.join(process.cwd(), ".tmp_test");
   const proj = path.join(tmp, "proj");
@@ -19,19 +44,10 @@ test("import is deterministic for same inputs", async () => {
   await fs.writeFile(path.join(proj, ".claude", "skills", "a.md"), "# skill\n", "utf8");
 
   await execFileP("node", ["dist/cli.js", "--project", proj, "--out", out]);
-  const latest1 = JSON.parse(await fs.readFile(path.join(out, "mova", "claude_import", "v0", "runs", "latest.json"), "utf8"));
-  const manifest1 = await fs.readFile(path.join(out, "mova", "claude_import", "v0", "runs", latest1.run_id, "import_manifest.json"), "utf8");
+  const snapshot1 = await readOutputSnapshot(out);
 
   await execFileP("node", ["dist/cli.js", "--project", proj, "--out", out]);
-  const latest2 = JSON.parse(await fs.readFile(path.join(out, "mova", "claude_import", "v0", "runs", "latest.json"), "utf8"));
-  const manifest2 = await fs.readFile(path.join(out, "mova", "claude_import", "v0", "runs", latest2.run_id, "import_manifest.json"), "utf8");
+  const snapshot2 = await readOutputSnapshot(out);
 
-  assert.equal(latest1.run_id, latest2.run_id);
-  assert.equal(manifest1, manifest2);
-
-  // ensure we do NOT copy source contents into sources/ in v0
-  const sourcesDir = path.join(out, "mova", "claude_import", "v0", "runs", latest1.run_id, "sources");
-  let sourcesExists = true;
-  try { await fs.stat(sourcesDir); } catch { sourcesExists = false; }
-  assert.equal(sourcesExists, false);
+  assert.equal(snapshot1, snapshot2);
 });
