@@ -77,6 +77,7 @@ if (subcommand === "init") {
     zipName,
   }).then((res) => {
     process.stdout.write(JSON.stringify(res, null, 2) + "\n");
+    if (typeof res.exit_code === "number") process.exit(res.exit_code);
     process.exit(res.ok ? 0 : 1);
   });
 }

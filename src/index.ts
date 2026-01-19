@@ -13,6 +13,7 @@ export type ImportOptions = {
 
 export type ImportResult = {
   ok: boolean;
+  exit_code?: number;
   run_id: string;
   out_dir: string;
   imported: {
@@ -25,3 +26,4 @@ export type ImportResult = {
 };
 
 export { runImport } from "./run_import.js";
+export { scanInputPolicyV0 } from "./input_policy_v0.js";
