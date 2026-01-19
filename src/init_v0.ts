@@ -3,6 +3,7 @@ import path from "node:path";
 import { getAnthropicProfileV0Files } from "./anthropic_profile_v0.js";
 import { stableStringify } from "./stable_json.js";
 import { createExportZipV0 } from "./export_zip_v0.js";
+import { writeCleanClaudeProfileScaffoldV0 } from "./claude_profile_scaffold_v0.js";
 
 type InitResult = {
   createdFiles: string[];
@@ -22,8 +23,10 @@ async function writeJsonFile(absPath: string, obj: any) {
 
 export async function initProfileV0(outRoot: string, emitZip: boolean): Promise<InitResult> {
   const createdFiles: string[] = [];
+  await writeCleanClaudeProfileScaffoldV0(outRoot);
   const profileFiles = getAnthropicProfileV0Files();
   for (const [rel, content] of Object.entries(profileFiles)) {
+    if (rel === "CLAUDE.md" || rel === ".claude/settings.json") continue;
     await writeTextFile(path.join(outRoot, rel), content);
     createdFiles.push(rel);
   }

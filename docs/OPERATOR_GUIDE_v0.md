@@ -1,62 +1,37 @@
 # Operator Guide v0
 
-## Purpose
+## Контрольные поверхности Claude Code
 
-Turn "chaos -> order" by rebuilding a clean Anthropic profile with deterministic MOVA artifacts.
+Основные точки контроля, которые всегда существуют в эталонном профиле:
 
-## Inputs Read
-
-- `CLAUDE.md`
-- `.claude/**`
+- `CLAUDE.md` (маркер `<!-- MOVA_CONTROL_ENTRY_V0 -->`)
+- `.claude/settings.json`
+- `.claude/settings.local.example.json`
+- `.claude/commands/`
+- `.claude/agents/`
+- `.claude/output-styles/`
+- `.claude/hooks/`
 - `.mcp.json`
 
-Not read:
-- `.claude/settings.local.json`
-- `**/*.local.*` and `CLAUDE.local.md` (unless `--include-local`)
-- `.env` / `.env.*`
-- private keys (`id_rsa*`, `*.pem`, `*.key`)
+## Как MOVA слой добавляет наблюдаемость
 
-## Input Policy Gate
+- Импорт и проверки пишут отчёты в `mova/claude_import/v0/`.
+- Control‑команды пишут планы/отчёты в `mova/claude_control/v0/runs/<run_id>/`.
+- Канон control‑схем: `schemas/claude_control/v0/{ds,env,global}`.
 
-- `--strict`: denies forbidden inputs and exits with code 2.
-- `--include-local`: allows `**/*.local.*` but still denies settings.local.json.
+## Control команды
 
-See `mova/claude_import/v0/input_policy_report_v0.json` for details.
+- `control prefill` — создаёт профиль `claude_control_profile_v0.json` и `prefill_report_v0.json`.
+- `control check` — строит план, ничего не меняет.
+- `control apply` — применяет изменения при `--mode apply`, иначе preview.
 
-## Output Layout (high level)
+## Жёсткие режимы (для автоматизации)
 
-```
-<out>/
-  CLAUDE.md
-  MOVA.md
-  .claude/
-  mova/claude_import/v0/
-```
+`--strict` предназначен для CI/проверок: при запрещённых входах он останавливает процесс и возвращает код 2.
+Для пользовательских сценариев по умолчанию применяется мягкий режим (preview + отчёт).
 
-## Source of Truth
+## Коды завершения CLI
 
-- Contracts: `mova/claude_import/v0/contracts/*.json`
-- Reports: `mova/claude_import/v0/*.json`
-- Anchor: `mova/claude_import/v0/VERSION.json`
-
-Canonical control layer schemas live under `schemas/claude_control/v0/` (ds/env/global).
-
-## How to Verify Proof
-
-```
-npm run quality
-npm run quality:neg
-```
-
-Verify `export_manifest_v0.json.zip_sha256` against the actual zip.
-
-## Troubleshooting
-
-- Exit code 2: strict input policy deny
-- Check `mova/claude_import/v0/input_policy_report_v0.json`
-
-## Control commands
-
-- `control prefill`: create/update `claude_control_profile_v0.json` plus `prefill_report_v0.json`
-- `control check`: preview-only plan and summary in `mova/claude_control/v0/runs/<run_id>/`
-- `control apply`: apply changes (default preview) with report in `mova/claude_control/v0/runs/<run_id>/`
+- `0` — успех или preview‑план построен.
+- `1` — неожиданный runtime‑сбой.
+- `2` — автоматизация остановлена политикой контроля (strict/CI).

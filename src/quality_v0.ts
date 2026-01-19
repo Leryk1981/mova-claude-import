@@ -5,6 +5,9 @@ import { promisify } from "node:util";
 import { runImport } from "./run_import.js";
 import { stableStringify } from "./stable_json.js";
 import { controlCheckV0 } from "./control_check_v0.js";
+import { controlPrefillV0 } from "./control_prefill_v0.js";
+import { controlApplyV0 } from "./control_apply_v0.js";
+import { writeCleanClaudeProfileScaffoldV0 } from "./claude_profile_scaffold_v0.js";
 
 type QualityCaseReport = {
   profile_version: "v0";
@@ -209,6 +212,27 @@ async function main() {
     );
     const outDir = path.join(process.cwd(), ".tmp_test", "quality", "control_check");
     await controlCheckV0(projectDir, profilePath, outDir);
+
+    const roundtripDir = path.join(process.cwd(), ".tmp_test", "quality", "full_scaffold_roundtrip");
+    const profileOut = path.join(roundtripDir, "profile");
+    const runOut = path.join(roundtripDir, "out");
+    await fs.rm(roundtripDir, { recursive: true, force: true });
+    await fs.mkdir(roundtripDir, { recursive: true });
+    await writeCleanClaudeProfileScaffoldV0(roundtripDir);
+    const prefill = await controlPrefillV0(roundtripDir, profileOut);
+    await controlCheckV0(roundtripDir, prefill.profile_path, runOut);
+    await controlApplyV0(roundtripDir, prefill.profile_path, runOut, "apply");
+    await runImport({
+      projectDir: roundtripDir,
+      outDir: path.join(roundtripDir, "rebuild"),
+      includeLocal: false,
+      includeUserSettings: false,
+      dryRun: false,
+      strict: false,
+      emitProfile: true,
+      emitOverlay: true,
+      emitZip: true,
+    });
   }
 
   const failed = reports.filter((r) => !r.ok);
