@@ -57,9 +57,17 @@ npx mova-claude-import init --out <dir> --zip
 npx mova-claude-import control apply --project <in> --profile <out>/claude_control_profile_v0.json --mode apply
 ```
 
+## Демо (60 секунд)
+
+```
+npm run demo
+```
+
 ## Где настраивается контроль
 
 Файл профиля: `claude_control_profile_v0.json` (создаётся через `control prefill`).
+Руководство: `docs/CONTROL_PROFILE_GUIDE_v0.md`.
+Примеры: `examples/control_profile_min.json`, `examples/control_profile_standard.json`, `examples/control_profile_strict.json`.
 
 Канон схем control‑слоя: `schemas/claude_control/v0/{ds,env,global}`.
 

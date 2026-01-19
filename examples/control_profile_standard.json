@@ -1,0 +1,81 @@
+{
+  "kind": "ds",
+  "id": "ds.claude_control_profile_v0",
+  "version": "0.1.0",
+  "title": "Claude Control Profile v0 (standard)",
+  "mode": "report_only",
+  "anthropic": {
+    "permissions": {
+      "allow": [],
+      "deny": [],
+      "behavior": {
+        "on_conflict": "deny_wins",
+        "on_unknown": "report_only"
+      }
+    },
+    "mcp": {
+      "servers": {},
+      "env_expansion_policy": {
+        "require_all_vars": false,
+        "allow_defaults_syntax": true,
+        "on_missing_var": "report_only"
+      }
+    },
+    "plugins": {
+      "enable": true,
+      "allowed_plugin_ids": [],
+      "denied_plugin_ids": [],
+      "behavior": {
+        "on_unknown": "report_only"
+      }
+    },
+    "hooks": {
+      "enable": true,
+      "definitions": [],
+      "behavior": {
+        "on_invalid_hook": "report_only"
+      }
+    },
+    "claude_md": {
+      "inject_control_entry": true,
+      "marker": "<!-- MOVA_CONTROL_ENTRY_V0 -->",
+      "paths": {
+        "project_primary": "CLAUDE.md",
+        "project_alt": ".claude/CLAUDE.md",
+        "local": "CLAUDE.local.md"
+      }
+    }
+  },
+  "mova": {
+    "overlay": {
+      "emit": true
+    },
+    "observability": {
+      "emit_version_anchor": true,
+      "emit_manifest": true,
+      "emit_policy_report": true,
+      "emit_apply_report": true,
+      "emit_quality_report": true,
+      "artifact_root": "mova/claude_import/v0"
+    },
+    "export": {
+      "emit_zip": false,
+      "zip_name": "export.zip",
+      "emit_export_manifest": true
+    }
+  },
+  "apply": {
+    "default_apply_mode": "preview",
+    "default_target": "project_only",
+    "backup_before_write": true,
+    "write_scopes": {
+      "user": false,
+      "project": true,
+      "local": false
+    },
+    "behavior": {
+      "on_unwritable_target": "report_only",
+      "on_parse_error": "report_only"
+    }
+  }
+}
