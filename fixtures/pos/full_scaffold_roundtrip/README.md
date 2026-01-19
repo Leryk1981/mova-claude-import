@@ -1,0 +1,1 @@
+Full scaffold roundtrip fixture.

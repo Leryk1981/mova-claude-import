@@ -3,6 +3,7 @@ import path from "node:path";
 import { stableStringify } from "./stable_json.js";
 import { stableSha256 } from "./redaction.js";
 import { buildMovaControlEntryV0, MOVA_CONTROL_ENTRY_MARKER } from "./mova_overlay_v0.js";
+import { ensureClaudeControlSurfacesV0 } from "./claude_profile_scaffold_v0.js";
 
 type ApplyResult = {
   run_id: string;
@@ -49,6 +50,7 @@ export async function controlApplyV0(
   outDir: string,
   mode?: string
 ): Promise<ApplyResult> {
+  await ensureClaudeControlSurfacesV0(projectDir);
   const profile = await readJson(profilePath);
   const applyMode = mode ?? profile?.apply?.default_apply_mode ?? "preview";
 

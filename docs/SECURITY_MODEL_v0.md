@@ -1,23 +1,20 @@
 # Security Model v0
 
-## What we guarantee
+## Основная идея
 
-- Local settings are blocked (`.claude/settings.local.json`).
-- Env files are blocked (`.env`, `.env.*`).
-- Private keys are blocked (`id_rsa*`, `*.pem`, `*.key`).
-- Redaction strips obvious secrets in text/JSON.
-- Outputs are deterministic for identical inputs and flags.
+Control‑команды по умолчанию работают в режиме preview: они строят планы и отчёты,
+но не вносят изменений, пока вы явно не попросите `--mode apply`.
 
-## What we do NOT guarantee
+## Жёсткие режимы — для автоматизации
 
-- We do not judge the semantic safety of skills or commands.
-- We do not validate external MCP servers beyond recording them.
+`--strict` — это режим CI/проверок. Он останавливает процесс с кодом 2, если
+политика контроля запрещает входы или шаги. Пользовательский режим остаётся мягким.
 
-## Modes and responsibility boundaries
+## Ответственность пользователя
 
-- This tool is a deterministic importer/rebuilder.
-- It does not execute skills, commands, or MCP side effects.
-- Strict mode is enforced in CI/quality, not enabled by default for users.
+Профиль контроля (`claude_control_profile_v0.json`) — это явная политика, которую
+вы задаёте сами. Инструмент не добавляет скрытых запретов и не выполняет “магии”.
 
-Control commands are preview-by-default and only apply changes when explicitly requested.
-Users control policy by editing the control profile.
+## Границы модели
+
+Мы не оцениваем “смысл” навыков и команд, и не гарантируем безопасность внешних MCP‑серверов.

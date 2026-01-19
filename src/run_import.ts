@@ -15,6 +15,7 @@ import { buildMovaOverlayV0, buildMovaControlEntryV0, MOVA_CONTROL_ENTRY_MARKER 
 import { scanInputPolicyV0 } from "./input_policy_v0.js";
 import { EvidenceWriter } from "@leryk1981/mova-core-engine";
 import { MOVA_SPEC_BINDINGS_V0 } from "./mova_spec_bindings_v0.js";
+import { writeCleanClaudeProfileScaffoldV0 } from "./claude_profile_scaffold_v0.js";
 
 type Found = {
   claudeMdPath?: string;
@@ -124,6 +125,12 @@ async function loadAndRedactJson(p: string) {
   const parsed = JSON.parse(raw);
   const { redacted, hits } = redactJson(parsed);
   return { raw, parsed, redacted, hits };
+}
+
+async function ensureClaudeControlEntry(claudePath: string, block: string, marker: string) {
+  const content = await fs.readFile(claudePath, "utf8");
+  if (content.includes(marker)) return;
+  await fs.writeFile(claudePath, `${block}\n${content}`, "utf8");
 }
 
 function orderedObject(obj: any) {
@@ -343,16 +350,21 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   }
 
   if (!opts.dryRun && opts.emitProfile) {
-    const profileFiles = getAnthropicProfileV0Files();
+    await writeCleanClaudeProfileScaffoldV0(outRoot);
     if (opts.emitOverlay) {
       const controlEntry = buildMovaControlEntryV0(overlayParams);
-      const claude = profileFiles["CLAUDE.md"] ?? "";
-      if (!claude.includes(MOVA_CONTROL_ENTRY_MARKER)) {
-        profileFiles["CLAUDE.md"] = `${controlEntry}\n${claude}`;
+      const claudePath = path.join(outRoot, "CLAUDE.md");
+      if (await exists(claudePath)) {
+        await ensureClaudeControlEntry(claudePath, controlEntry, MOVA_CONTROL_ENTRY_MARKER);
       }
-      Object.assign(profileFiles, buildMovaOverlayV0(overlayParams));
+      const overlayFiles = buildMovaOverlayV0(overlayParams);
+      for (const [rel, content] of Object.entries(overlayFiles)) {
+        await writeTextFile(path.join(outRoot, rel), content);
+      }
     }
+    const profileFiles = getAnthropicProfileV0Files();
     for (const [rel, content] of Object.entries(profileFiles)) {
+      if (rel === "CLAUDE.md" || rel === ".claude/settings.json") continue;
       await writeTextFile(path.join(outRoot, rel), content);
     }
     if (mcpJsonParsed) {
