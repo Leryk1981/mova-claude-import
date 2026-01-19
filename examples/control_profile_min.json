@@ -1,0 +1,37 @@
+{
+  "kind": "ds",
+  "id": "ds.claude_control_profile_v0",
+  "version": "0.1.0",
+  "title": "Claude Control Profile v0 (min)",
+  "mode": "report_only",
+  "anthropic": {
+    "permissions": {
+      "allow": [],
+      "deny": [],
+      "behavior": {
+        "on_conflict": "deny_wins",
+        "on_unknown": "report_only"
+      }
+    },
+    "mcp": {
+      "servers": {}
+    },
+    "claude_md": {
+      "inject_control_entry": true,
+      "marker": "<!-- MOVA_CONTROL_ENTRY_V0 -->"
+    }
+  },
+  "mova": {
+    "overlay": {
+      "emit": true
+    },
+    "observability": {
+      "artifact_root": "mova/claude_import/v0"
+    }
+  },
+  "apply": {
+    "default_apply_mode": "preview",
+    "default_target": "project_only",
+    "backup_before_write": true
+  }
+}

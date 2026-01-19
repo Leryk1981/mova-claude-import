@@ -19,13 +19,19 @@
 - Control‑команды пишут планы/отчёты в `mova/claude_control/v0/runs/<run_id>/`.
 - Канон control‑схем: `schemas/claude_control/v0/{ds,env,global}`.
 
-## Control команды
+## Команды CLI
 
-- `control prefill` — создаёт профиль `claude_control_profile_v0.json` и `prefill_report_v0.json`.
-- `control check` — строит план, ничего не меняет.
-- `control apply` — применяет изменения при `--mode apply`, иначе preview.
+| Команда | Назначение |
+| --- | --- |
+| `init` | создать полный эталонный профиль |
+| `--project ...` | импорт/ребилд существующего проекта |
+| `control prefill` | создать `claude_control_profile_v0.json` и `prefill_report_v0.json` |
+| `control check` | построить план, ничего не менять |
+| `control apply` | применить изменения при `--mode apply`, иначе preview |
 
-## Жёсткие режимы (для автоматизации)
+См. `docs/CONTROL_PROFILE_GUIDE_v0.md` и примеры в `examples/`.
+
+## Автоматизация/CI
 
 `--strict` предназначен для CI/проверок: при запрещённых входах он останавливает процесс и возвращает код 2.
 Для пользовательских сценариев по умолчанию применяется мягкий режим (preview + отчёт).
