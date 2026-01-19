@@ -2,11 +2,13 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { EvidenceWriter, EpisodeWriter } from "@leryk1981/mova-core-engine";
 import type { ImportOptions, ImportResult } from "./index.js";
-import { redactText, redactJson, stableSha256, RedactionHit } from "./redaction.js";
+import { redactText, redactJson, RedactionHit } from "./redaction.js";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
+import { getAnthropicProfileV0Files } from "./anthropic_profile_v0.js";
+import { lintV0, type LintReportV0 } from "./lint_v0.js";
+import { stableStringify } from "./stable_json.js";
 
 type Found = {
   claudeMdPath?: string;
@@ -83,11 +85,20 @@ function computeRunId(hashes: string[]): string {
   return h.digest("hex").slice(0, 16);
 }
 
-/** Helper to write a JSON contract */
-async function writeContract(base: string, runId: string, name: string, obj: any) {
-  const outPath = path.join(base, "runs", runId, "contracts", name);
-  await fs.mkdir(path.dirname(outPath), { recursive: true });
-  await fs.writeFile(outPath, JSON.stringify(obj, null, 2) + "\n", "utf8");
+function normalizeSkillDir(rel: string): string {
+  const base = rel.replace(/\\/g, "/").replace(/\.md$/i, "");
+  const withoutRoot = base.replace(/^\.claude\/skills\//, "");
+  return withoutRoot.replace(/[^a-zA-Z0-9._-]+/g, "-");
+}
+
+async function writeJsonFile(absPath: string, obj: any) {
+  await fs.mkdir(path.dirname(absPath), { recursive: true });
+  await fs.writeFile(absPath, stableStringify(obj) + "\n", "utf8");
+}
+
+async function writeTextFile(absPath: string, content: string) {
+  await fs.mkdir(path.dirname(absPath), { recursive: true });
+  await fs.writeFile(absPath, content, "utf8");
 }
 
 /** Load a JSON file and redact it */
@@ -95,12 +106,12 @@ async function loadAndRedactJson(p: string) {
   const raw = await fs.readFile(p, "utf8");
   const parsed = JSON.parse(raw);
   const { redacted, hits } = redactJson(parsed);
-  return { redacted, hits };
+  return { raw, parsed, redacted, hits };
 }
 
 export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   const projectDir = path.resolve(opts.projectDir);
-  const outDir = path.resolve(opts.outDir);
+  const outRoot = path.resolve(opts.outDir);
   const found = await scanProject(opts);
 
   const inputs: Array<{ rel: string; sha256: string }> = [];
@@ -123,9 +134,11 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
 
   // .mcp.json
   let mcpJsonRedacted = "";
+  let mcpJsonParsed: any | undefined;
   if (found.mcpJsonPath) {
-    const { redacted, hits } = await loadAndRedactJson(found.mcpJsonPath);
-    mcpJsonRedacted = JSON.stringify(redacted, null, 2);
+    const { parsed, redacted, hits } = await loadAndRedactJson(found.mcpJsonPath);
+    mcpJsonParsed = parsed;
+    mcpJsonRedacted = stableStringify(redacted);
     redactionHits.push(...hits);
     inputs.push({
       rel: ".mcp.json",
@@ -143,39 +156,57 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
 
   const runId = computeRunId(inputs.map((x) => `${x.rel}:${x.sha256}`));
 
-  const baseRun = path.join(outDir, "mova", "claude_import", "v0");
-  const runBase = path.join(baseRun, "runs", runId);
+  const movaBase = path.join(outRoot, "mova", "claude_import", "v0");
+  const normalizedSkills = Object.entries(skillRedactedMap).map(([rel, body]) => ({
+    rel,
+    body,
+    normDir: normalizeSkillDir(rel),
+    title: path.basename(rel, ".md"),
+  }));
+
+  if (!opts.dryRun && opts.emitProfile) {
+    const profileFiles = getAnthropicProfileV0Files();
+    for (const [rel, content] of Object.entries(profileFiles)) {
+      await writeTextFile(path.join(outRoot, rel), content);
+    }
+    if (mcpJsonParsed) {
+      await writeJsonFile(path.join(outRoot, ".mcp.json"), mcpJsonParsed);
+    }
+    for (const skill of normalizedSkills) {
+      const outRel = path.join(".claude", "skills", skill.normDir, "SKILL.md");
+      await writeTextFile(path.join(outRoot, outRel), skill.body);
+    }
+  }
 
   // Build contracts
   const instructionProfile = {
-    kind: "instruction_profile_v0",
-    profile_id: "default",
-    source: {
-      path: "CLAUDE.md",
-      sha256: inputs.find((i) => i.rel === "CLAUDE.md")?.sha256 ?? "",
+    profile_version: "v0",
+    claude_md: claudeMdRedacted,
+    anchors: {
+      mova_entry: "MOVA.md",
+      normalized_project: ".",
     },
-    instructions_markdown_redacted: claudeMdRedacted,
   };
 
   const skillsCatalog = {
-    kind: "skills_catalog_v0",
-    skills: Object.entries(skillRedactedMap).map(([rel, body]) => ({
-      skill_id: path.basename(rel, ".md"),
-      title: path.basename(rel, ".md"),
-      source: { path: rel, sha256: inputs.find((i) => i.rel === rel)!.sha256 },
-      body_markdown_redacted: body,
+    profile_version: "v0",
+    skills: normalizedSkills.map((skill) => ({
+      skill_id: skill.normDir,
+      rel_dir: `.claude/skills/${skill.normDir}`,
+      title: skill.title,
+      skill_md: skill.body,
     })),
   };
 
   const mcpServers = {
-    kind: "mcp_servers_v0",
-    servers: [],
+    profile_version: "v0",
+    servers: Array.isArray(mcpJsonParsed?.servers) ? mcpJsonParsed?.servers : [],
   };
 
   if (!opts.dryRun) {
-    await writeContract(baseRun, runId, "instruction_profile_v0.json", instructionProfile);
-    await writeContract(baseRun, runId, "skills_catalog_v0.json", skillsCatalog);
-    await writeContract(baseRun, runId, "mcp_servers_v0.json", mcpServers);
+    await writeJsonFile(path.join(movaBase, "contracts", "instruction_profile_v0.json"), instructionProfile);
+    await writeJsonFile(path.join(movaBase, "contracts", "skills_catalog_v0.json"), skillsCatalog);
+    await writeJsonFile(path.join(movaBase, "contracts", "mcp_servers_v0.json"), mcpServers);
   }
 
   // Validation with Ajv
@@ -208,19 +239,18 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
     },
   };
 
-  // Evidence / Episode
-  const evidence = new EvidenceWriter(runBase);
-  const episodeWriter = new EpisodeWriter(evidence);
   const manifest = {
     tool: "mova-claude-import",
     version: "v0",
     run_id: runId,
     project_dir: projectDir,
+    out_root: outRoot,
+    emit_profile: opts.emitProfile,
     inputs: inputs.sort((a, b) => a.rel.localeCompare(b.rel)),
     imported: {
       claude_md: Boolean(found.claudeMdPath),
       mcp_json: Boolean(found.mcpJsonPath),
-      skills_count: found.skillFiles.length,
+      skills_count: normalizedSkills.length,
     },
     skipped: found.skipped,
   };
@@ -230,8 +260,8 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   };
 
   const episode = {
-    episode_id: crypto.randomUUID(),
-    recorded_at: new Date().toISOString(),
+    episode_id: runId,
+    recorded_at: "1970-01-01T00:00:00.000Z",
     episode_type: "claude_import_run_v0",
     run_id: runId,
     ok: true,
@@ -243,24 +273,32 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   };
 
   if (!opts.dryRun) {
-    await fs.mkdir(runBase, { recursive: true });
-    await evidence.writeArtifact(runBase, "import_manifest.json", manifest);
-    await evidence.writeArtifact(runBase, "redaction_report.json", redactionReport);
-    await episodeWriter.writeExecutionEpisode(`claude_import_${runId}`, runId, episode);
-    // latest pointer
-    await fs.mkdir(path.join(baseRun, "runs"), { recursive: true });
-    await fs.writeFile(
-      path.join(baseRun, "runs", "latest.json"),
-      JSON.stringify({ run_id: runId }, null, 2) + "\n",
-      "utf8"
-    );
+    await writeJsonFile(path.join(movaBase, "import_manifest.json"), manifest);
+    await writeJsonFile(path.join(movaBase, "redaction_report.json"), redactionReport);
+    await writeJsonFile(path.join(movaBase, "episode_import_run.json"), episode);
+  }
+
+  let lintReport: LintReportV0 = {
+    profile_version: "v0" as const,
+    ok: true,
+    issues: [],
+    summary: "lint_v0: ok",
+  };
+  if (!opts.dryRun) {
+    lintReport = await lintV0({
+      outRoot,
+      emitProfile: opts.emitProfile,
+      mcpExpected: Boolean(found.mcpJsonPath),
+    });
+    await writeJsonFile(path.join(movaBase, "lint_report_v0.json"), lintReport);
   }
 
   return {
     ok: true,
     run_id: runId,
-    out_dir: runBase,
+    out_dir: outRoot,
     imported: manifest.imported,
     skipped: found.skipped,
+    lint_summary: lintReport.summary,
   };
 }

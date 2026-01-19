@@ -5,6 +5,7 @@ export type ImportOptions = {
   includeUserSettings: boolean;
   dryRun: boolean;
   strict: boolean;
+  emitProfile: boolean;
 };
 
 export type ImportResult = {
@@ -17,6 +18,7 @@ export type ImportResult = {
     skills_count: number;
   };
   skipped: Array<{ path: string; reason: string }>;
+  lint_summary: string;
 };
 
 export { runImport } from "./run_import.js";
