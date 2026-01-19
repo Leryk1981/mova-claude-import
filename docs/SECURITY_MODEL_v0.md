@@ -17,3 +17,4 @@
 
 - This tool is a deterministic importer/rebuilder.
 - It does not execute skills, commands, or MCP side effects.
+- Strict mode is enforced in CI/quality, not enabled by default for users.

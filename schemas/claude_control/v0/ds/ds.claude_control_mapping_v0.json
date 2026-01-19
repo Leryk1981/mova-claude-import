@@ -1,0 +1,227 @@
+{
+  "kind": "ds",
+  "id": "ds.claude_control_mapping_v0",
+  "version": "0.1.0",
+  "title": "Claude Control Mapping v0",
+  "notes": [
+    "Явная карта разноса значений из control_profile в файлы Claude Code.",
+    "Цель v0: детерминированный apply без «магии» и без неожиданных изменений user/local.",
+    "Все операции должны сопровождаться apply_report и policy_report."
+  ],
+  "files": {
+    "claude_md_project": {
+      "scope": "project",
+      "path": "CLAUDE.md",
+      "format": "text"
+    },
+    "claude_settings_project": {
+      "scope": "project",
+      "path": ".claude/settings.json",
+      "format": "json"
+    },
+    "claude_settings_local": {
+      "scope": "local",
+      "path": ".claude/settings.local.json",
+      "format": "json"
+    },
+    "mcp_project": {
+      "scope": "project",
+      "path": ".mcp.json",
+      "format": "json"
+    },
+    "mova_overlay_context": {
+      "scope": "project",
+      "path": "mova/claude_import/v0/overlay/mova_context_v0.json",
+      "format": "json"
+    },
+    "mova_overlay_proof": {
+      "scope": "project",
+      "path": "mova/claude_import/v0/overlay/mova_proof_v0.json",
+      "format": "json"
+    },
+    "mova_control_skill": {
+      "scope": "project",
+      "path": "mova/claude_import/v0/overlay/skills/mova_control.skill.md",
+      "format": "text"
+    }
+  },
+  "merge": {
+    "strategies": {
+      "override": {
+        "description": "Заменить целевое значение полностью.",
+        "kind": "override"
+      },
+      "append_unique": {
+        "description": "Добавить элементы, сохраняя уникальность (по строковому представлению).",
+        "kind": "append_unique"
+      },
+      "deny_wins": {
+        "description": "При конфликте allow/deny — deny сильнее.",
+        "kind": "deny_wins"
+      },
+      "object_deep_merge": {
+        "description": "Рекурсивное слияние объектов, ключи источника перекрывают целевые.",
+        "kind": "object_deep_merge"
+      }
+    }
+  },
+  "mappings": [
+    {
+      "id": "map.claude_md.control_entry",
+      "description": "Вставить/обновить блок MOVA Control Entry в CLAUDE.md по маркеру.",
+      "from": "control_profile.anthropic.claude_md",
+      "to": {
+        "file_ref": "claude_md_project",
+        "text_mode": "marker_replace",
+        "marker": "<!-- MOVA_CONTROL_ENTRY_V0 -->"
+      },
+      "when": {
+        "field_equals": {
+          "path": "control_profile.anthropic.claude_md.inject_control_entry",
+          "value": true
+        }
+      },
+      "behavior": {
+        "on_missing_target": "report_only",
+        "on_parse_error": "report_only"
+      }
+    },
+    {
+      "id": "map.settings.permissions.allow",
+      "description": "Разнести allow-правила в project settings.",
+      "from": "control_profile.anthropic.permissions.allow",
+      "to": {
+        "file_ref": "claude_settings_project",
+        "json_path": "permissions.allow",
+        "merge_strategy": "append_unique"
+      },
+      "when": {
+        "non_empty_array": "control_profile.anthropic.permissions.allow"
+      }
+    },
+    {
+      "id": "map.settings.permissions.deny",
+      "description": "Разнести deny-правила в project settings.",
+      "from": "control_profile.anthropic.permissions.deny",
+      "to": {
+        "file_ref": "claude_settings_project",
+        "json_path": "permissions.deny",
+        "merge_strategy": "append_unique"
+      },
+      "when": {
+        "non_empty_array": "control_profile.anthropic.permissions.deny"
+      }
+    },
+    {
+      "id": "map.settings.permissions.behavior",
+      "description": "Записать поведение разрешений (конфликт/неизвестное) в settings.",
+      "from": "control_profile.anthropic.permissions.behavior",
+      "to": {
+        "file_ref": "claude_settings_project",
+        "json_path": "permissions.behavior",
+        "merge_strategy": "object_deep_merge"
+      }
+    },
+    {
+      "id": "map.mcp.servers",
+      "description": "Разнести MCP servers в .mcp.json (project).",
+      "from": "control_profile.anthropic.mcp.servers",
+      "to": {
+        "file_ref": "mcp_project",
+        "json_path": "mcpServers",
+        "merge_strategy": "object_deep_merge"
+      }
+    },
+    {
+      "id": "map.mcp.env_policy",
+      "description": "Записать политику разворачивания env-переменных (MOVA-уровень) в overlay context.",
+      "from": "control_profile.anthropic.mcp.env_expansion_policy",
+      "to": {
+        "file_ref": "mova_overlay_context",
+        "json_path": "anthropic.mcp.env_expansion_policy",
+        "merge_strategy": "object_deep_merge"
+      }
+    },
+    {
+      "id": "map.plugins.policy",
+      "description": "Политика плагинов как наблюдаемость (не навязываем Anthropic формат).",
+      "from": "control_profile.anthropic.plugins",
+      "to": {
+        "file_ref": "mova_overlay_context",
+        "json_path": "anthropic.plugins",
+        "merge_strategy": "object_deep_merge"
+      }
+    },
+    {
+      "id": "map.hooks.policy",
+      "description": "Политика hooks как наблюдаемость (v0).",
+      "from": "control_profile.anthropic.hooks",
+      "to": {
+        "file_ref": "mova_overlay_context",
+        "json_path": "anthropic.hooks",
+        "merge_strategy": "object_deep_merge"
+      }
+    },
+    {
+      "id": "map.apply.defaults",
+      "description": "Зафиксировать настройки apply в overlay context (источник правды для отчётов).",
+      "from": "control_profile.apply",
+      "to": {
+        "file_ref": "mova_overlay_context",
+        "json_path": "apply",
+        "merge_strategy": "object_deep_merge"
+      }
+    },
+    {
+      "id": "map.mova.observability",
+      "description": "Настройки наблюдаемости MOVA слоя.",
+      "from": "control_profile.mova.observability",
+      "to": {
+        "file_ref": "mova_overlay_context",
+        "json_path": "mova.observability",
+        "merge_strategy": "object_deep_merge"
+      }
+    },
+    {
+      "id": "map.mova.export",
+      "description": "Настройки экспорта zip.",
+      "from": "control_profile.mova.export",
+      "to": {
+        "file_ref": "mova_overlay_context",
+        "json_path": "mova.export",
+        "merge_strategy": "object_deep_merge"
+      }
+    },
+    {
+      "id": "map.mova.premium",
+      "description": "Премиум-блоки (по умолчанию выключены) — только фиксация намерения.",
+      "from": "control_profile.mova.premium",
+      "to": {
+        "file_ref": "mova_overlay_context",
+        "json_path": "mova.premium",
+        "merge_strategy": "object_deep_merge"
+      }
+    },
+    {
+      "id": "map.overlay.proof",
+      "description": "Сформировать базовый proof-контейнер для ссылок на отчёты/доказательства.",
+      "from": "control_profile",
+      "to": {
+        "file_ref": "mova_overlay_proof",
+        "json_path": "proof",
+        "merge_strategy": "override"
+      },
+      "behavior": {
+        "generate_proof_container": true
+      }
+    }
+  ],
+  "constraints": {
+    "default_write_scopes": ["project"],
+    "safe_by_default": true,
+    "never_write_user_scope_by_default": true,
+    "never_write_local_scope_by_default": true,
+    "require_apply_report": true,
+    "require_policy_report": true
+  }
+}

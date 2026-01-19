@@ -1,0 +1,114 @@
+{
+  "kind": "ds",
+  "id": "ds.claude_control_profile_v0",
+  "version": "0.1.0",
+  "title": "Claude Control Profile v0",
+  "mode": "report_only",
+  "notes": [
+    "Единая точка управления контролем Claude Code + MOVA слой наблюдаемости.",
+    "По умолчанию НЕ ломает работу: формирует отчёты и подсказки. Жёсткое применение/запреты включаются явно пользователем.",
+    "Этот профиль можно заполнить вручную или получить prefill через импорт существующей папки Claude."
+  ],
+  "anthropic": {
+    "scopes_enabled": {
+      "managed": false,
+      "user": true,
+      "project": true,
+      "local": true
+    },
+    "permissions": {
+      "description": "Правила allow/deny (в стиле Claude Code) для действий и инструментов.",
+      "allow": [],
+      "deny": [],
+      "behavior": {
+        "on_conflict": "deny_wins",
+        "on_unknown": "report_only"
+      }
+    },
+    "mcp": {
+      "description": "Подключения MCP серверов и правила по переменным окружения.",
+      "servers": {},
+      "env_expansion_policy": {
+        "require_all_vars": false,
+        "allow_defaults_syntax": true,
+        "on_missing_var": "report_only"
+      }
+    },
+    "plugins": {
+      "description": "Политика использования плагинов/команд. На v0 — только реестр намерений и отчёты.",
+      "enable": true,
+      "allowed_plugin_ids": [],
+      "denied_plugin_ids": [],
+      "behavior": {
+        "on_unknown": "report_only"
+      }
+    },
+    "hooks": {
+      "description": "Крючки (hooks) Claude Code, если используются в проекте/плагинах.",
+      "enable": true,
+      "definitions": [],
+      "behavior": {
+        "on_invalid_hook": "report_only"
+      }
+    },
+    "claude_md": {
+      "description": "Политика вставки управляющего блока MOVA и позиционирование его в CLAUDE.md.",
+      "inject_control_entry": true,
+      "marker": "<!-- MOVA_CONTROL_ENTRY_V0 -->",
+      "paths": {
+        "project_primary": "CLAUDE.md",
+        "project_alt": ".claude/CLAUDE.md",
+        "local": "CLAUDE.local.md"
+      }
+    }
+  },
+  "mova": {
+    "overlay": {
+      "description": "MOVA Control Overlay — добавляет понятный блок управления и ссылки на отчёты.",
+      "emit": true
+    },
+    "observability": {
+      "description": "Артефакты наблюдаемости и доказательности. Включены по умолчанию.",
+      "emit_version_anchor": true,
+      "emit_manifest": true,
+      "emit_policy_report": true,
+      "emit_apply_report": true,
+      "emit_quality_report": true,
+      "artifact_root": "mova/claude_import/v0"
+    },
+    "export": {
+      "description": "Экспорт zip для передачи/архивации результата.",
+      "emit_zip": false,
+      "zip_name": "export.zip",
+      "emit_export_manifest": true
+    },
+    "premium": {
+      "description": "Премиум-блоки по умолчанию выключены. Включаются пользователем, если он подключает соответствующие пакеты/дверь.",
+      "tool_door": {
+        "enabled": false,
+        "policy_profile_id": "",
+        "endpoint": "",
+        "auth_ref": ""
+      },
+      "proofkits": {
+        "enabled": false,
+        "selected": []
+      }
+    }
+  },
+  "apply": {
+    "description": "Настройки операции apply (разнос из профиля в файлы Claude Code).",
+    "default_apply_mode": "preview",
+    "default_target": "project_only",
+    "backup_before_write": true,
+    "write_scopes": {
+      "user": false,
+      "project": true,
+      "local": false
+    },
+    "behavior": {
+      "on_unwritable_target": "report_only",
+      "on_parse_error": "report_only"
+    }
+  }
+}

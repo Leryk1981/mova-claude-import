@@ -39,6 +39,8 @@ See `mova/claude_import/v0/input_policy_report_v0.json` for details.
 - Reports: `mova/claude_import/v0/*.json`
 - Anchor: `mova/claude_import/v0/VERSION.json`
 
+Canonical control layer schemas live under `schemas/claude_control/v0/` (ds/env/global).
+
 ## How to Verify Proof
 
 ```

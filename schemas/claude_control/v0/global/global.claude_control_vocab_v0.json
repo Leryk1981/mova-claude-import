@@ -1,0 +1,98 @@
+{
+  "kind": "global",
+  "id": "global.claude_control_vocab_v0",
+  "version": "0.1.0",
+  "title": "Claude Code Control Vocabulary v0",
+  "notes": [
+    "Словарь терминов и перечисления для контрольного слоя Claude Code + MOVA overlay.",
+    "Используется как единый источник семантики для DS/Env слоев."
+  ],
+  "enums": {
+    "scope": {
+      "description": "Где действует настройка/контроль.",
+      "values": ["user", "project", "local", "managed"]
+    },
+    "control_surface": {
+      "description": "Точка контроля в Claude Code / интеграциях.",
+      "values": [
+        "claude_md",
+        "settings",
+        "permissions",
+        "mcp",
+        "plugins",
+        "hooks",
+        "tools",
+        "filesystem",
+        "network",
+        "logging",
+        "export"
+      ]
+    },
+    "apply_mode": {
+      "description": "Режим применения изменений к файлам Claude Code.",
+      "values": ["preview", "write", "write_with_backup"]
+    },
+    "default_behavior": {
+      "description": "Поведение по умолчанию при нарушениях/неполноте/конфликтах.",
+      "values": ["report_only", "warn", "enforce"]
+    },
+    "outcome_code": {
+      "description": "Нормализованный код исхода шага/операции.",
+      "values": ["OK", "WARN", "PARTIAL", "DENY", "ERROR"]
+    },
+    "severity": {
+      "description": "Важность события/правила/нарушения.",
+      "values": ["info", "warn", "high"]
+    },
+    "artifact_kind": {
+      "description": "Тип артефакта наблюдаемости.",
+      "values": [
+        "control_profile",
+        "mapping",
+        "manifest",
+        "import_report",
+        "apply_report",
+        "policy_report",
+        "check_report",
+        "quality_report",
+        "episode",
+        "export_zip",
+        "diff_summary",
+        "backup"
+      ]
+    },
+    "merge_strategy": {
+      "description": "Как объединять значения из разных областей (scopes).",
+      "values": ["override_last", "deny_wins", "allow_wins"]
+    },
+    "apply_target": {
+      "description": "Какие файлы/области разрешено изменять при apply.",
+      "values": [
+        "project_only",
+        "user_only",
+        "local_only",
+        "project_and_user",
+        "project_and_local",
+        "all"
+      ]
+    }
+  },
+  "glossary": [
+    {
+      "term": "Control Profile",
+      "definition": "Единый файл настроек контроля. Пользователь заполняет один раз; из него генерируются/обновляются файлы Claude Code."
+    },
+    {
+      "term": "Import Prefill",
+      "definition": "Импорт существующих настроек Claude Code в Control Profile (перенос значений без применения изменений обратно)."
+    },
+    {
+      "term": "Apply",
+      "definition": "Операция разноса значений из Control Profile в конкретные файлы и места Claude Code (settings, mcp и т.д.)."
+    },
+    {
+      "term": "Observability",
+      "definition": "Артефакты и отчёты: что было применено, что запрещено, где конфликт, какие версии и доказательства."
+    }
+  ]
+}
