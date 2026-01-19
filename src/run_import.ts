@@ -9,6 +9,7 @@ import addFormats from "ajv-formats";
 import { getAnthropicProfileV0Files } from "./anthropic_profile_v0.js";
 import { lintV0, type LintReportV0 } from "./lint_v0.js";
 import { stableStringify } from "./stable_json.js";
+import { createExportZipV0 } from "./export_zip_v0.js";
 
 type Found = {
   claudeMdPath?: string;
@@ -244,7 +245,6 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
     version: "v0",
     run_id: runId,
     project_dir: projectDir,
-    out_root: outRoot,
     emit_profile: opts.emitProfile,
     inputs: inputs.sort((a, b) => a.rel.localeCompare(b.rel)),
     imported: {
@@ -291,6 +291,18 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
       mcpExpected: Boolean(found.mcpJsonPath),
     });
     await writeJsonFile(path.join(movaBase, "lint_report_v0.json"), lintReport);
+  }
+
+  if (!opts.dryRun && opts.emitZip) {
+    const exportZip = await createExportZipV0(outRoot, opts.zipName);
+    const exportManifest = {
+      profile_version: "v0",
+      zip_rel_path: exportZip.zipRelPath,
+      zip_sha256: exportZip.zipSha256,
+      files_count: exportZip.files.length,
+      files: exportZip.files,
+    };
+    await writeJsonFile(path.join(movaBase, "export_manifest_v0.json"), exportManifest);
   }
 
   return {

@@ -6,6 +6,8 @@ export type ImportOptions = {
   dryRun: boolean;
   strict: boolean;
   emitProfile: boolean;
+  emitZip: boolean;
+  zipName?: string;
 };
 
 export type ImportResult = {
