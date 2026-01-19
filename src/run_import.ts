@@ -11,6 +11,7 @@ import { lintV0, type LintReportV0 } from "./lint_v0.js";
 import { stableStringify } from "./stable_json.js";
 import { createExportZipV0 } from "./export_zip_v0.js";
 import { buildMovaOverlayV0, buildMovaControlEntryV0, MOVA_CONTROL_ENTRY_MARKER } from "./mova_overlay_v0.js";
+import { scanInputPolicyV0 } from "./input_policy_v0.js";
 
 type Found = {
   claudeMdPath?: string;
@@ -114,6 +115,10 @@ async function loadAndRedactJson(p: string) {
 export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   const projectDir = path.resolve(opts.projectDir);
   const outRoot = path.resolve(opts.outDir);
+  const inputPolicy = await scanInputPolicyV0(projectDir, {
+    strict: opts.strict,
+    include_local: opts.includeLocal,
+  });
   const found = await scanProject(opts);
 
   const inputs: Array<{ rel: string; sha256: string }> = [];
@@ -175,6 +180,60 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
     normDir: normalizeSkillDir(rel),
     title: path.basename(rel, ".md"),
   }));
+
+  if (!opts.dryRun) {
+    await writeJsonFile(path.join(movaBase, "input_policy_report_v0.json"), inputPolicy);
+  }
+
+  if (opts.strict && !inputPolicy.ok) {
+    const deniedRunId = computeRunId(
+      inputPolicy.denied.map((d) => `${d.path}:${d.kind}:${d.reason}`).sort()
+    );
+    if (!opts.dryRun) {
+      const manifest = {
+        tool: "mova-claude-import",
+        version: "v0",
+        run_id: deniedRunId,
+        project_dir: projectDir,
+        emit_profile: opts.emitProfile,
+        inputs: [],
+        imported: {
+          claude_md: false,
+          mcp_json: false,
+          skills_count: 0,
+        },
+        skipped: found.skipped,
+        input_policy_ok: false,
+      };
+      const episode = {
+        episode_id: deniedRunId,
+        recorded_at: "1970-01-01T00:00:00.000Z",
+        episode_type: "claude_import_run_v0",
+        run_id: deniedRunId,
+        ok: false,
+        result_core: {
+          imported: manifest.imported,
+          inputs_count: 0,
+          validation: null,
+        },
+        failure: {
+          reason: "input_policy_denied",
+          denied_count: inputPolicy.denied.length,
+        },
+      };
+      await writeJsonFile(path.join(movaBase, "import_manifest.json"), manifest);
+      await writeJsonFile(path.join(movaBase, "episode_import_run.json"), episode);
+    }
+    return {
+      ok: false,
+      exit_code: 2,
+      run_id: deniedRunId,
+      out_dir: outRoot,
+      imported: { claude_md: false, mcp_json: false, skills_count: 0 },
+      skipped: found.skipped,
+      lint_summary: "lint_v0: skipped",
+    };
+  }
 
   if (!opts.dryRun && opts.emitProfile) {
     const profileFiles = getAnthropicProfileV0Files();
@@ -272,6 +331,7 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
       skills_count: normalizedSkills.length,
     },
     skipped: found.skipped,
+    input_policy_ok: inputPolicy.ok,
   };
   const redactionReport = {
     hits: redactionHits,

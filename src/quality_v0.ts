@@ -11,6 +11,7 @@ type QualityCaseReport = {
   ok: boolean;
   failures: string[];
   checks: {
+    input_policy_ok: boolean;
     lint_ok: boolean;
     redaction_hits: number;
     settings_local_input: boolean;
@@ -20,6 +21,7 @@ type QualityCaseReport = {
     zip_present: boolean;
     export_files_count_match: boolean;
   };
+  exit_code?: number;
 };
 
 function getArg(name: string): string | undefined {
@@ -75,13 +77,14 @@ async function runCase(suite: "pos" | "neg", caseId: string, fixturesRoot: strin
   await fs.rm(outRoot, { recursive: true, force: true });
   await fs.mkdir(outRoot, { recursive: true });
 
+  const strict = suite === "neg" && caseId === "strict_denied_local";
   const result = await runImport({
     projectDir,
     outDir: outRoot,
     includeLocal: false,
     includeUserSettings: false,
     dryRun: false,
-    strict: false,
+    strict,
     emitProfile: true,
     emitOverlay: true,
     emitZip: true,
@@ -93,11 +96,13 @@ async function runCase(suite: "pos" | "neg", caseId: string, fixturesRoot: strin
   const lintPath = path.join(movaBase, "lint_report_v0.json");
   const redactionPath = path.join(movaBase, "redaction_report.json");
   const exportManifestPath = path.join(movaBase, "export_manifest_v0.json");
+  const inputPolicyPath = path.join(movaBase, "input_policy_report_v0.json");
 
   const failures: string[] = [];
 
-  const lintReport = await readJson(lintPath);
-  const redactionReport = await readJson(redactionPath);
+  const inputPolicyReport = await readJson(inputPolicyPath);
+  const lintReport = await exists(lintPath) ? await readJson(lintPath) : null;
+  const redactionReport = await exists(redactionPath) ? await readJson(redactionPath) : { hits: [] };
   const exportManifestExists = await exists(exportManifestPath);
   const exportManifest = exportManifestExists ? await readJson(exportManifestPath) : null;
 
@@ -112,13 +117,18 @@ async function runCase(suite: "pos" | "neg", caseId: string, fixturesRoot: strin
     exportManifest.files_count === exportManifest.files.length;
 
   if (!(await exists(manifestPath))) failures.push("missing_import_manifest");
-  if (!lintReport?.ok) failures.push("lint_not_ok");
+  if (!inputPolicyReport?.ok && suite === "pos") failures.push("input_policy_not_ok");
+  if (!lintReport?.ok && !strict) failures.push("lint_not_ok");
   if (Array.isArray(redactionReport?.hits) && redactionReport.hits.length > 0) failures.push("redaction_hits_present");
   if (settingsLocalInput) failures.push("settings_local_input_present");
   if (!skillStructure.ok) failures.push("skill_structure_invalid");
-  if (!exportManifestExists) failures.push("missing_export_manifest");
-  if (!zipPresent) failures.push("zip_missing");
-  if (!exportFilesCountMatch) failures.push("export_files_count_mismatch");
+  if (!strict) {
+    if (!exportManifestExists) failures.push("missing_export_manifest");
+    if (!zipPresent) failures.push("zip_missing");
+    if (!exportFilesCountMatch) failures.push("export_files_count_mismatch");
+  } else {
+    if (result.exit_code !== 2) failures.push("strict_exit_code_not_2");
+  }
 
   const ok = failures.length === 0;
   const report: QualityCaseReport = {
@@ -129,6 +139,7 @@ async function runCase(suite: "pos" | "neg", caseId: string, fixturesRoot: strin
     ok,
     failures,
     checks: {
+      input_policy_ok: Boolean(inputPolicyReport?.ok),
       lint_ok: Boolean(lintReport?.ok),
       redaction_hits: Array.isArray(redactionReport?.hits) ? redactionReport.hits.length : 0,
       settings_local_input: settingsLocalInput,
@@ -138,6 +149,7 @@ async function runCase(suite: "pos" | "neg", caseId: string, fixturesRoot: strin
       zip_present: zipPresent,
       export_files_count_match: exportFilesCountMatch,
     },
+    exit_code: result.exit_code,
   };
 
   const reportPath = path.join(repoRoot, "artifacts", "quality_v0", result.run_id, "quality_report_v0.json");
