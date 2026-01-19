@@ -15,6 +15,8 @@ Output:
 - `<out>/mova/claude_import/v0/...` contracts/reports
 - `<out>/export.zip` plus `export_manifest_v0.json`
 
+Control layer contracts live under `schemas/claude_control/v0/` (ds/env/global).
+
 ### Init a new project scaffold
 
 ```

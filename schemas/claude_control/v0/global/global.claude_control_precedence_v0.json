@@ -1,0 +1,58 @@
+{
+  "kind": "global",
+  "id": "global.claude_control_precedence_v0",
+  "version": "0.1.0",
+  "title": "Claude Code Settings Precedence v0",
+  "notes": [
+    "Нормативный порядок приоритетов областей (scopes) для чтения/объединения настроек.",
+    "Используется инструментом import/check/apply для объяснений и детерминированного маппинга."
+  ],
+  "settings": {
+    "source_of_truth": "mova_control_profile",
+    "scopes_precedence_order": ["managed", "user", "project", "local"],
+    "merge_strategy_default": "override_last",
+    "conflict_rules": [
+      {
+        "when": "permissions.deny intersects permissions.allow",
+        "strategy": "deny_wins",
+        "note": "Если одно и то же действие одновременно разрешено и запрещено — запрет сильнее."
+      }
+    ],
+    "paths_reference": {
+      "settings": {
+        "user": "~/.claude/settings.json",
+        "project": ".claude/settings.json",
+        "local": ".claude/settings.local.json",
+        "managed_windows": "C:\\\\Program Files\\\\ClaudeCode\\\\managed-settings.json",
+        "managed_macos": "/Library/Application Support/ClaudeCode/managed-settings.json",
+        "managed_linux": "/etc/claude-code/managed-settings.json"
+      },
+      "mcp": {
+        "project": ".mcp.json",
+        "user_or_local": "~/.claude.json",
+        "managed_windows": "C:\\\\Program Files\\\\ClaudeCode\\\\managed-mcp.json",
+        "managed_macos": "/Library/Application Support/ClaudeCode/managed-mcp.json",
+        "managed_linux": "/etc/claude-code/managed-mcp.json"
+      },
+      "claude_md": {
+        "project_primary": "CLAUDE.md",
+        "project_alt": ".claude/CLAUDE.md",
+        "local": "CLAUDE.local.md"
+      }
+    }
+  },
+  "explanations": [
+    {
+      "topic": "Почему managed выше всех",
+      "text": "Организационные настройки должны иметь высший приоритет, чтобы администратор мог навязать минимальные ограничения."
+    },
+    {
+      "topic": "Почему local ниже project",
+      "text": "Локальные настройки предназначены для машины разработчика и не должны неожиданно менять проектный контракт для команды."
+    },
+    {
+      "topic": "Что значит source_of_truth",
+      "text": "После внедрения MOVA контрольный профиль становится единой точкой правды; остальные файлы — производные артефакты и совместимость."
+    }
+  ]
+}
