@@ -35,5 +35,8 @@ jobs:
       - name: Deps audit
         run: npm run deps:audit
 
+      - name: Docs check
+        run: npm run docs:check
+
       - name: Pack (smoke)
         run: npm pack --silent

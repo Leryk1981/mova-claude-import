@@ -28,3 +28,8 @@ npx mova-claude-import init --out <dir> --zip
 - `--zip` / `--zip-name`
 - `--no-emit-profile`
 - `--no-emit-overlay`
+
+## References
+
+- `docs/COMPATIBILITY_MATRIX.md`
+- `docs/MOVA_SPEC_BINDINGS.md`
