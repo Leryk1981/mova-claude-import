@@ -25,7 +25,7 @@ await execFileP("node", [
   out,
 ]);
 
-await fs.stat(path.join(out, ".claude", "hooks", "skill-eval.sh"));
+await fs.stat(path.join(out, ".claude", "hooks", "skill-eval.js"));
 await fs.stat(path.join(out, ".claude", "commands", "start.md"));
 await fs.stat(path.join(out, ".claude", "hooks", "mova-observe.js"));
 

@@ -69,8 +69,8 @@ function scaffoldFiles(): ScaffoldFile[] {
       content: ["# example_style", "", "Style: concise, bullet-first.", ""].join("\n"),
     },
     {
-      rel: ".claude/hooks/example_hook.sh",
-      content: ["#!/usr/bin/env bash", "echo \"hook: dry check\""].join("\n") + "\n",
+      rel: ".claude/hooks/example_hook.js",
+      content: ["#!/usr/bin/env node", "process.stdout.write(\"hook: dry check\");"].join("\n") + "\n",
     },
     {
       rel: ".mcp.json",

@@ -34,6 +34,7 @@
 
 Claude Code запускает hook‑команды из корня проекта, поэтому для скриптов используйте относительные пути (например, `.claude/hooks/mova-observe.js`).
 На Windows `$CLAUDE_PROJECT_DIR` не разворачивается в cmd‑строках, поэтому не используйте его в `command` без явного `cmd /c` и `%CLAUDE_PROJECT_DIR%`.
+Для кроссплатформенности используйте Node‑скрипты (`node .claude/hooks/*.js`) вместо bash.
 
 ## Команды CLI
 

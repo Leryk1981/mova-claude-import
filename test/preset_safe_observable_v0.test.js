@@ -43,7 +43,7 @@ test("preset overlay applies assets and hooks", async () => {
     proj,
   ]);
 
-  await fs.stat(path.join(proj, ".claude", "hooks", "skill-eval.sh"));
+  await fs.stat(path.join(proj, ".claude", "hooks", "skill-eval.js"));
   await fs.stat(path.join(proj, ".claude", "commands", "start.md"));
   await fs.stat(path.join(proj, ".claude", "skills", "testing-patterns", "SKILL.md"));
   await fs.stat(path.join(proj, ".claude", "hooks", "mova-observe.js"));
@@ -51,5 +51,5 @@ test("preset overlay applies assets and hooks", async () => {
   const settings = JSON.parse(await fs.readFile(path.join(proj, ".claude", "settings.json"), "utf8"));
   assert.ok(hasHookCommand(settings?.hooks?.PostToolUse, "mova-observe.js"));
   assert.ok(hasHookCommand(settings?.hooks?.PostToolUse, "--event PostToolUse"));
-  assert.ok(hasHookCommand(settings?.hooks?.UserPromptSubmit, "skill-eval.sh"));
+  assert.ok(hasHookCommand(settings?.hooks?.UserPromptSubmit, "skill-eval.js"));
 });

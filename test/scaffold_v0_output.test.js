@@ -29,7 +29,7 @@ test("init creates full scaffold surfaces", async () => {
   await assertExists(path.join(out, ".claude", "commands", "example_command.md"));
   await assertExists(path.join(out, ".claude", "agents", "example_agent.md"));
   await assertExists(path.join(out, ".claude", "output-styles", "example_style.md"));
-  await assertExists(path.join(out, ".claude", "hooks", "example_hook.sh"));
+  await assertExists(path.join(out, ".claude", "hooks", "example_hook.js"));
   await assertExists(path.join(out, ".mcp.json"));
   await assertExists(path.join(out, "mova", "control_v0.json"));
 });
