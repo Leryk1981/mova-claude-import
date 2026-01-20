@@ -30,6 +30,11 @@
 - Control‑команды пишут планы/отчёты в `mova/claude_control/v0/runs/<run_id>/`.
 - Канон control‑схем: `schemas/claude_control/v0/{ds,env,global}`.
 
+## Про hooks и пути
+
+Claude Code запускает hook‑команды из корня проекта, поэтому для скриптов используйте относительные пути (например, `.claude/hooks/mova-observe.js`).
+На Windows `$CLAUDE_PROJECT_DIR` не разворачивается в cmd‑строках, поэтому не используйте его в `command` без явного `cmd /c` и `%CLAUDE_PROJECT_DIR%`.
+
 ## Команды CLI
 
 | Команда | Назначение |
