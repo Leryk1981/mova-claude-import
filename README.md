@@ -15,7 +15,7 @@
 Стало (минимальный срез):
 
 ```
-<project>/
+.\project\
   CLAUDE.md
   .claude/
     settings.json
@@ -36,54 +36,55 @@
 ### Recommended flow (control_v0)
 
 ```
-npx mova-claude-import init --out <dir>
-npx mova-claude-import control prefill --project <dir> --out <dir>
-npx mova-claude-import control apply --project <dir> --profile <dir>/mova/control_v0.json --mode apply
-npx mova-claude-import control check --project <dir> --profile <dir>/mova/control_v0.json
+mkdir .\claude_profile -Force
+npx -y mova-claude-import@latest init --out .\claude_profile
+npx -y mova-claude-import@latest control prefill --project .\claude_profile --out .\prefill_out
+npx -y mova-claude-import@latest control apply --project .\claude_profile --profile .\claude_profile\mova\control_v0.json --mode apply
+npx -y mova-claude-import@latest control check --project .\claude_profile --profile .\claude_profile\mova\control_v0.json
 ```
 
 ### У меня уже есть папка Claude Code‑проекта
 
 ```
-npx mova-claude-import --project <in> --out <out> --zip
+npx -y mova-claude-import@latest --project .\claude_profile --out .\out --zip
 ```
 
 ### Quick start (existing Claude folder + preset)
 
 ```
-npx -y mova-claude-import@<version> preset list
-npx -y mova-claude-import@<version> control apply --preset safe_observable_v0 --project . --mode overlay
+npx -y mova-claude-import@latest preset list
+npx -y mova-claude-import@latest control apply --preset safe_observable_v0 --project . --mode overlay
 ```
 
 Дальше используйте единый контрольный файл и выполните rebuild/import:
 
 ```
-<out>/mova/control_v0.json
-npx mova-claude-import --project <in> --out <out> --zip
+.\out\mova\control_v0.json
+npx -y mova-claude-import@latest --project .\claude_project --out .\out --zip
 ```
 
 ### Я хочу создать эталонный профиль с нуля (init)
 
 ```
-npx mova-claude-import init --out <dir> --zip
+npx -y mova-claude-import@latest init --out .\claude_profile --zip
 ```
 
 Заполните единый контрольный файл:
 
 ```
-<dir>/mova/control_v0.json
+.\claude_profile\mova\control_v0.json
 ```
 
 Затем выполните rebuild/import:
 
 ```
-npx mova-claude-import --project <dir> --out <out> --zip
+npx -y mova-claude-import@latest --project .\claude_profile --out .\out --zip
 ```
 
 ### Контроль (preview по умолчанию)
 
 ```
-npx mova-claude-import control apply --project <in> --profile <out>/claude_control_profile_v0.json --mode apply
+npx -y mova-claude-import@latest control apply --project .\claude_profile --profile .\prefill_out\claude_control_profile_v0.json --mode apply
 ```
 
 ## Демо (60 секунд)
@@ -108,14 +109,14 @@ Schema: `schemas/mova.control_v0.schema.json`.
 - `mova/claude_import/v0/*` — отчёты импорта и контроля качества
 - `mova/claude_control/v0/runs/*` — планы/отчёты control‑команд
 - `.mova/episodes/index.jsonl` — индекс наблюдаемости
-- `.mova/episodes/<run_id>/summary.json` — краткая сводка последнего прогона
+- `.mova/episodes/run_.../summary.json` — краткая сводка последнего прогона
 
 ## Наблюдаемость (Observability Writer)
 
 Writer включается из `mova/control_v0.json` и через hooks пишет эпизоды:
 
-- события в `.mova/episodes/<run_id>/events.jsonl`
-- сводка в `.mova/episodes/<run_id>/summary.json`
+- события в `.mova/episodes/run_.../events.jsonl`
+- сводка в `.mova/episodes/run_.../summary.json`
 - индекс прогонов в `.mova/episodes/index.jsonl`
 
 Отключить можно через `observability.enable=false` в `mova/control_v0.json`.
@@ -123,9 +124,10 @@ Writer включается из `mova/control_v0.json` и через hooks пи
 Минимальные команды:
 
 ```
-npx mova-claude-import observe list --project <dir>
-npx mova-claude-import observe tail --project <dir> --run <id>
-npx mova-claude-import observe summary --project <dir> --run <id>
+npx -y mova-claude-import@latest observe list --project .\claude_profile
+$run = (Get-ChildItem .\claude_profile\.mova\episodes -Directory | Sort-Object Name -Descending | Select-Object -First 1).Name
+npx -y mova-claude-import@latest observe tail --project .\claude_profile --run $run
+npx -y mova-claude-import@latest observe summary --project .\claude_profile --run $run
 ```
 
 ## Для автоматизации

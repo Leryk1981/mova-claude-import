@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 type PresetInfo = {
   name: string;
@@ -18,7 +19,9 @@ async function exists(p: string): Promise<boolean> {
 }
 
 export function getPresetsRoot(): string {
-  return path.join(process.cwd(), "presets");
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const pkgRoot = path.resolve(here, "..");
+  return path.join(pkgRoot, "presets");
 }
 
 export async function listPresets(): Promise<string[]> {
