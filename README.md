@@ -26,6 +26,7 @@
     hooks/
   .mcp.json
   mova/
+    control_v0.json
     claude_import/v0/...
     claude_control/v0/runs/...
 ```
@@ -38,17 +39,29 @@
 npx mova-claude-import --project <in> --out <out> --zip
 ```
 
-Дальше добавьте контрольный профиль и проверьте план:
+Дальше используйте единый контрольный файл и выполните rebuild/import:
 
 ```
-npx mova-claude-import control prefill --project <in> --out <out>
-npx mova-claude-import control check --project <in> --profile <out>/claude_control_profile_v0.json
+<out>/mova/control_v0.json
+npx mova-claude-import --project <in> --out <out> --zip
 ```
 
 ### Я хочу создать эталонный профиль с нуля (init)
 
 ```
 npx mova-claude-import init --out <dir> --zip
+```
+
+Заполните единый контрольный файл:
+
+```
+<dir>/mova/control_v0.json
+```
+
+Затем выполните rebuild/import:
+
+```
+npx mova-claude-import --project <dir> --out <out> --zip
 ```
 
 ### Контроль (preview по умолчанию)
@@ -68,6 +81,8 @@ npm run demo
 Файл профиля: `claude_control_profile_v0.json` (создаётся через `control prefill`).
 Руководство: `docs/CONTROL_PROFILE_GUIDE_v0.md`.
 Примеры: `examples/control_profile_min.json`, `examples/control_profile_standard.json`, `examples/control_profile_strict.json`.
+
+Единый контрольный файл для rebuild/import: `mova/control_v0.json`.
 
 Канон схем control‑слоя: `schemas/claude_control/v0/{ds,env,global}`.
 

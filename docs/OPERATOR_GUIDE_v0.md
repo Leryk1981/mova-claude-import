@@ -12,6 +12,15 @@
 - `.claude/output-styles/`
 - `.claude/hooks/`
 - `.mcp.json`
+- `mova/control_v0.json` (единый источник правды для rebuild/import)
+
+## Единый контрольный файл
+
+`mova/control_v0.json` — источник истины для rebuild/import. Он синхронизирует:
+
+- блок MOVA в `CLAUDE.md` по маркеру
+- `.claude/settings.json`
+- `.mcp.json`
 
 ## Как MOVA слой добавляет наблюдаемость
 

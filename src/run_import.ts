@@ -11,15 +11,23 @@ import { getAnthropicProfileV0Files } from "./anthropic_profile_v0.js";
 import { lintV0, type LintReportV0 } from "./lint_v0.js";
 import { stableStringify } from "./stable_json.js";
 import { createExportZipV0 } from "./export_zip_v0.js";
-import { buildMovaOverlayV0, buildMovaControlEntryV0, MOVA_CONTROL_ENTRY_MARKER } from "./mova_overlay_v0.js";
+import { buildMovaOverlayV0, buildMovaControlEntryV0 } from "./mova_overlay_v0.js";
 import { scanInputPolicyV0 } from "./input_policy_v0.js";
 import { EvidenceWriter } from "@leryk1981/mova-core-engine";
 import { MOVA_SPEC_BINDINGS_V0 } from "./mova_spec_bindings_v0.js";
 import { writeCleanClaudeProfileScaffoldV0 } from "./claude_profile_scaffold_v0.js";
+import {
+  controlFromSettingsV0,
+  controlToSettingsV0,
+  normalizeControlV0,
+  type ControlV0,
+} from "./control_v0.js";
 
 type Found = {
   claudeMdPath?: string;
   mcpJsonPath?: string;
+  settingsPath?: string;
+  controlPath?: string;
   skillFiles: string[];
   skipped: Array<{ path: string; reason: string }>;
 };
@@ -67,6 +75,12 @@ async function scanProject(opts: ImportOptions): Promise<Found> {
 
   const mcpJson = path.join(projectDir, ".mcp.json");
   if (await exists(mcpJson)) found.mcpJsonPath = mcpJson;
+
+  const settingsJson = path.join(projectDir, ".claude", "settings.json");
+  if (await exists(settingsJson)) found.settingsPath = settingsJson;
+
+  const controlJson = path.join(projectDir, "mova", "control_v0.json");
+  if (await exists(controlJson)) found.controlPath = controlJson;
 
   const skillsRoot = path.join(projectDir, ".claude", "skills");
   if (await exists(skillsRoot)) {
@@ -127,10 +141,15 @@ async function loadAndRedactJson(p: string) {
   return { raw, parsed, redacted, hits };
 }
 
-async function ensureClaudeControlEntry(claudePath: string, block: string, marker: string) {
-  const content = await fs.readFile(claudePath, "utf8");
-  if (content.includes(marker)) return;
-  await fs.writeFile(claudePath, `${block}\n${content}`, "utf8");
+function updateClaudeBlock(content: string, marker: string, block: string): string {
+  if (content.includes(marker)) {
+    const idx = content.indexOf(marker);
+    const after = content.slice(idx);
+    const split = after.split("\n\n");
+    split[0] = block.trimEnd();
+    return content.slice(0, idx) + split.join("\n\n");
+  }
+  return `${block}\n${content}`;
 }
 
 function orderedObject(obj: any) {
@@ -177,24 +196,73 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
     return redacted;
   }
 
+  /** Process a JSON file – redact and record */
+  async function processJsonFile(rel: string, absPath: string) {
+    const { parsed, hits } = await loadAndRedactJson(absPath);
+    inputs.push({ rel, sha256: await sha256File(absPath) });
+    redactionHits.push(...hits);
+    return parsed;
+  }
+
+  const controlRel = "mova/control_v0.json";
+  let controlOutput: ControlV0 | null = null;
+  let controlDefaults: string[] = [];
+  let controlSource: "control_file" | "migrated" = "migrated";
+  let controlMigrationReport: any | null = null;
+
+  if (found.controlPath) {
+    const controlParsed = await processJsonFile(controlRel, found.controlPath);
+    const normalized = normalizeControlV0(controlParsed);
+    controlOutput = normalized.control;
+    controlDefaults = normalized.defaults;
+    controlSource = "control_file";
+  } else {
+    let settingsParsed: any | undefined;
+    let mcpParsed: any | undefined;
+    let settingsFound = false;
+    let mcpFound = false;
+
+    if (found.settingsPath) {
+      settingsParsed = await processJsonFile(".claude/settings.json", found.settingsPath);
+      settingsFound = true;
+    }
+
+    if (found.mcpJsonPath) {
+      mcpParsed = await processJsonFile(".mcp.json", found.mcpJsonPath);
+      mcpFound = true;
+    }
+
+    const migrated = controlFromSettingsV0(settingsParsed, mcpParsed);
+    controlOutput = migrated.control;
+    controlDefaults = migrated.defaults;
+    controlSource = "migrated";
+
+    controlMigrationReport = {
+      profile_version: "v0",
+      control_version: "control_v0",
+      project_dir: projectDir,
+      control_path: controlRel,
+      found: {
+        settings_json: settingsFound,
+        mcp_json: mcpFound,
+      },
+      sources: {
+        claude_md: "default",
+        overlay: "default",
+        policy: settingsFound ? "settings_json" : "default",
+        mcp: mcpFound ? "mcp_json" : "default",
+      },
+      defaults_used: controlDefaults,
+    };
+  }
+
+  const control = controlOutput ?? normalizeControlV0({}).control;
+  const mcpJsonParsed = { servers: control.mcp.servers };
+
   // CLAUDE.md
   let claudeMdRedacted = "";
   if (found.claudeMdPath) {
     claudeMdRedacted = await processTextFile("CLAUDE.md", found.claudeMdPath);
-  }
-
-  // .mcp.json
-  let mcpJsonRedacted = "";
-  let mcpJsonParsed: any | undefined;
-  if (found.mcpJsonPath) {
-    const { parsed, redacted, hits } = await loadAndRedactJson(found.mcpJsonPath);
-    mcpJsonParsed = parsed;
-    mcpJsonRedacted = stableStringify(redacted);
-    redactionHits.push(...hits);
-    inputs.push({
-      rel: ".mcp.json",
-      sha256: await sha256File(found.mcpJsonPath),
-    });
   }
 
   // skill files
@@ -240,6 +308,14 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
     };
     await writeEvidenceArtifact(evidenceWriter, movaBase, "VERSION.json", versionInfo);
     await writeEvidenceArtifact(evidenceWriter, movaBase, "input_policy_report_v0.json", inputPolicy);
+    if (controlMigrationReport) {
+      await writeEvidenceArtifact(
+        evidenceWriter,
+        movaBase,
+        "control_migration_report_v0.json",
+        controlMigrationReport
+      );
+    }
   }
 
   if (opts.strict && !inputPolicy.ok) {
@@ -351,11 +427,16 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
 
   if (!opts.dryRun && opts.emitProfile) {
     await writeCleanClaudeProfileScaffoldV0(outRoot);
-    if (opts.emitOverlay) {
+    const overlayEnabled = opts.emitOverlay && control.overlay.enable;
+    if (overlayEnabled) {
       const controlEntry = buildMovaControlEntryV0(overlayParams);
       const claudePath = path.join(outRoot, "CLAUDE.md");
       if (await exists(claudePath)) {
-        await ensureClaudeControlEntry(claudePath, controlEntry, MOVA_CONTROL_ENTRY_MARKER);
+        if (control.claude_md.inject_control_entry) {
+          const raw = await fs.readFile(claudePath, "utf8");
+          const updated = updateClaudeBlock(raw, control.claude_md.marker, controlEntry);
+          await fs.writeFile(claudePath, updated, "utf8");
+        }
       }
       const overlayFiles = buildMovaOverlayV0(overlayParams);
       for (const [rel, content] of Object.entries(overlayFiles)) {
@@ -367,9 +448,9 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
       if (rel === "CLAUDE.md" || rel === ".claude/settings.json") continue;
       await writeTextFile(path.join(outRoot, rel), content);
     }
-    if (mcpJsonParsed) {
-      await writeJsonFile(path.join(outRoot, ".mcp.json"), mcpJsonParsed);
-    }
+    await writeJsonFile(path.join(outRoot, ".mcp.json"), mcpJsonParsed);
+    await writeJsonFile(path.join(outRoot, ".claude", "settings.json"), controlToSettingsV0(control));
+    await writeJsonFile(path.join(outRoot, controlRel), control);
     for (const skill of normalizedSkills) {
       const outRel = path.join(".claude", "skills", skill.normDir, "SKILL.md");
       await writeTextFile(path.join(outRoot, outRel), skill.body);
@@ -449,6 +530,7 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
     },
   };
 
+  const mcpSourcePresent = controlSource === "control_file" || Boolean(found.mcpJsonPath);
   const manifest = {
     tool: "mova-claude-import",
     version: "v0",
@@ -458,7 +540,7 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
     inputs: inputs.sort((a, b) => a.rel.localeCompare(b.rel)),
     imported: {
       claude_md: Boolean(found.claudeMdPath),
-      mcp_json: Boolean(found.mcpJsonPath),
+      mcp_json: mcpSourcePresent,
       skills_count: normalizedSkills.length,
     },
     skipped: found.skipped,
@@ -498,7 +580,7 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
     lintReport = await lintV0({
       outRoot,
       emitProfile: opts.emitProfile,
-      mcpExpected: Boolean(found.mcpJsonPath),
+      mcpExpected: mcpSourcePresent,
     });
     await writeEvidenceArtifact(evidenceWriter, movaBase, "lint_report_v0.json", lintReport);
   }

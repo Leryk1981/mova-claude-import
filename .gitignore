@@ -35,6 +35,8 @@ coverage/
 .tmp/
 .tmp_test/
 .tmp_demo/
+.tmp_*/
+.tmp_tree_*/
 tmp/
 pids/
 *.pid
