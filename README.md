@@ -33,6 +33,17 @@
 
 ## Быстрый старт
 
+## Где размещать файлы проекта
+
+Claude Code читает инструкции из корня репозитория. После генерации профиля (init/preset) поместите в корень:
+
+- `CLAUDE.md`
+- `.claude/` (settings, commands, agents, hooks, rules, skills)
+- `.mcp.json`
+- `mova/` (control_v0.json и отчеты)
+
+Если перенести эти папки не в корень, Claude Code и `mova-claude-import` не найдут настройки.
+
 ### Recommended flow (control_v0)
 
 ```

@@ -1,0 +1,30 @@
+{
+  "claude_md": {
+    "inject_control_entry": true,
+    "marker": "<!-- MOVA_CONTROL_ENTRY_V0 -->"
+  },
+  "hooks": {
+    "behavior": {
+      "on_invalid_hook": "report_only"
+    },
+    "definitions": [],
+    "enable": true
+  },
+  "permissions": {
+    "allow": [],
+    "behavior": {
+      "on_conflict": "deny_wins",
+      "on_unknown": "report_only"
+    },
+    "deny": []
+  },
+  "plugins": {
+    "allowed_plugin_ids": [],
+    "behavior": {
+      "on_unknown": "report_only"
+    },
+    "denied_plugin_ids": [],
+    "enable": true
+  },
+  "profile_version": "v0"
+}

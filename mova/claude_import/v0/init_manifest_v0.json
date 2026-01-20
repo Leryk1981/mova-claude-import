@@ -1,0 +1,24 @@
+{
+  "created_files": [
+    ".claude/agents/code-reviewer.md",
+    ".claude/commands/finish.md",
+    ".claude/commands/mova_context.md",
+    ".claude/commands/mova_lint.md",
+    ".claude/commands/start.md",
+    ".claude/hooks/skill-eval.js",
+    ".claude/hooks/skill-eval.sh",
+    ".claude/hooks/skill-rules.json",
+    ".claude/rules/code-style.md",
+    ".claude/rules/security.md",
+    ".claude/skills/git-workflow/SKILL.md",
+    ".claude/skills/mova-layer-v0/SKILL.md",
+    ".claude/skills/security-basics/SKILL.md",
+    ".claude/skills/systematic-debugging/SKILL.md",
+    ".claude/skills/testing-patterns/SKILL.md",
+    "MOVA.md",
+    "mova/control_v0.json"
+  ],
+  "profile_version": "v0",
+  "zip_rel_path": null,
+  "zip_sha256": null
+}

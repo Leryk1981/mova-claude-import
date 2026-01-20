@@ -1,0 +1,234 @@
+{
+  "$schema": "https://mova.dev/schemas/mova.control_v0.schema.json",
+  "assets": {
+    "agents": [
+      {
+        "mode": "copy_through",
+        "path": ".claude/agents/code-reviewer.md",
+        "source_path": ".claude/agents/code-reviewer.md"
+      }
+    ],
+    "commands": [
+      {
+        "mode": "copy_through",
+        "path": ".claude/commands/start.md",
+        "source_path": ".claude/commands/start.md"
+      },
+      {
+        "mode": "copy_through",
+        "path": ".claude/commands/finish.md",
+        "source_path": ".claude/commands/finish.md"
+      }
+    ],
+    "docs": [],
+    "dotfiles": [],
+    "hooks": [
+      {
+        "mode": "copy_through",
+        "path": ".claude/hooks/skill-eval.sh",
+        "source_path": ".claude/hooks/skill-eval.sh"
+      },
+      {
+        "mode": "copy_through",
+        "path": ".claude/hooks/skill-eval.js",
+        "source_path": ".claude/hooks/skill-eval.js"
+      },
+      {
+        "mode": "copy_through",
+        "path": ".claude/hooks/skill-rules.json",
+        "source_path": ".claude/hooks/skill-rules.json"
+      }
+    ],
+    "rules": [
+      {
+        "mode": "copy_through",
+        "path": ".claude/rules/code-style.md",
+        "source_path": ".claude/rules/code-style.md"
+      },
+      {
+        "mode": "copy_through",
+        "path": ".claude/rules/security.md",
+        "source_path": ".claude/rules/security.md"
+      }
+    ],
+    "schemas": [],
+    "skills": [
+      {
+        "mode": "copy_through",
+        "path": ".claude/skills/testing-patterns/SKILL.md",
+        "source_path": ".claude/skills/testing-patterns/SKILL.md"
+      },
+      {
+        "mode": "copy_through",
+        "path": ".claude/skills/systematic-debugging/SKILL.md",
+        "source_path": ".claude/skills/systematic-debugging/SKILL.md"
+      },
+      {
+        "mode": "copy_through",
+        "path": ".claude/skills/security-basics/SKILL.md",
+        "source_path": ".claude/skills/security-basics/SKILL.md"
+      },
+      {
+        "mode": "copy_through",
+        "path": ".claude/skills/git-workflow/SKILL.md",
+        "source_path": ".claude/skills/git-workflow/SKILL.md"
+      }
+    ],
+    "workflows": []
+  },
+  "claude_md": {
+    "inject_control_entry": true,
+    "marker": "<!-- MOVA_CONTROL_ENTRY_V0 -->",
+    "priority_sources": [
+      "CLAUDE.md",
+      ".claude/CLAUDE.md",
+      "~/.claude/CLAUDE.md"
+    ]
+  },
+  "claude_memory": {
+    "enable": true,
+    "sources": [
+      "CLAUDE.md"
+    ]
+  },
+  "lsp": {
+    "config_path": ".claude/lsp.json",
+    "enabled_plugins": [],
+    "managed": false
+  },
+  "mcp": {
+    "enable_all_project_mcp_servers": false,
+    "enabled_mcpjson_servers": [],
+    "env_substitutions": {
+      "default_format": "${VAR:-default}",
+      "format": "${VAR}"
+    },
+    "servers": {}
+  },
+  "observability": {
+    "enable": true,
+    "include_events": [
+      "PostToolUse",
+      "UserPromptSubmit",
+      "Stop"
+    ],
+    "include_tools": [
+      "Bash",
+      "Read",
+      "Edit",
+      "MultiEdit",
+      "Write"
+    ],
+    "max_event_bytes": 20000,
+    "mode": "report_only",
+    "output_dir": ".mova/episodes",
+    "stderr_tail_bytes": 4000,
+    "stdout_tail_bytes": 4000,
+    "tail_lines": 50,
+    "writer": {
+      "script_path": ".claude/hooks/mova-observe.js",
+      "type": "node"
+    }
+  },
+  "overlay": {
+    "enable": true
+  },
+  "policy": {
+    "hooks": {
+      "definitions": [],
+      "enable": true,
+      "events": {
+        "PostToolUse": [
+          {
+            "hooks": [
+              {
+                "command": "if [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" =~ \\\\.(js|jsx|ts|tsx)$ ]]; then\n  npx prettier --write \"$CLAUDE_TOOL_INPUT_FILE_PATH\" 2>&1\n  exit_code=$?\n  if [ $exit_code -ne 0 ]; then\n    echo '{\"feedback\": \"Formatting failed.\"}' >&2\n    exit 1\n  fi\n  echo '{\"feedback\": \"Formatting applied.\", \"suppressOutput\": true}'\nfi",
+                "timeout": 30,
+                "type": "command"
+              }
+            ],
+            "matcher": "Edit|MultiEdit|Write"
+          },
+          {
+            "hooks": [
+              {
+                "command": "if [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" =~ \\\\.test\\\\.(js|jsx|ts|tsx)$ ]]; then\n  npm test -- --findRelatedTests \"$CLAUDE_TOOL_INPUT_FILE_PATH\" --passWithNoTests 2>&1 | tail -30\n  exit 0\nfi",
+                "timeout": 90,
+                "type": "command"
+              }
+            ],
+            "matcher": "Edit|MultiEdit|Write"
+          }
+        ],
+        "PreToolUse": [
+          {
+            "hooks": [
+              {
+                "command": "[ \"$(git branch --show-current)\" != \"main\" ] || { echo '{\"block\": true, \"message\": \"Cannot edit files on main branch. Create a feature branch first.\"}' >&2; exit 2; }",
+                "timeout": 5,
+                "type": "command"
+              }
+            ],
+            "matcher": "Edit|MultiEdit|Write"
+          },
+          {
+            "hooks": [
+              {
+                "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -E -i \"(rm\\\\s+-rf|sudo|curl\\\\s+[^|]+\\\\|\\\\s*sh|wget\\\\s+[^|]+\\\\|\\\\s*sh|mkfs\\\\.|dd\\\\s+if=|chmod\\\\s+777|chown\\\\s+root|\\\\.env|id_rsa|\\\\.pem)\"; then\n  echo '{\"block\": true, \"message\": \"Potentially dangerous command blocked.\"}' >&2\n  exit 2\nfi",
+                "timeout": 5,
+                "type": "command"
+              }
+            ],
+            "matcher": "Bash"
+          }
+        ],
+        "UserPromptSubmit": [
+          {
+            "hooks": [
+              {
+                "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/skill-eval.sh",
+                "timeout": 5,
+                "type": "command"
+              }
+            ]
+          }
+        ]
+      },
+      "on_invalid_hook": "report_only"
+    },
+    "mode": "report_only",
+    "permissions": {
+      "allow": [
+        "Bash",
+        "Edit",
+        "Read"
+      ],
+      "deny": [],
+      "on_conflict": "deny_wins",
+      "on_unknown": "report_only"
+    },
+    "plugins": {
+      "allowed_plugin_ids": [],
+      "denied_plugin_ids": [],
+      "enable": true,
+      "enabled_plugins": {},
+      "on_unknown": "report_only"
+    }
+  },
+  "settings": {
+    "env": {},
+    "include_co_authored_by": true
+  },
+  "skill_eval": {
+    "enable": true,
+    "hooks": {
+      "node": ".claude/hooks/skill-eval.js",
+      "shell": ".claude/hooks/skill-eval.sh"
+    },
+    "rules_path": ".claude/hooks/skill-rules.json",
+    "scoring": {
+      "threshold": 0.6
+    }
+  },
+  "version": "control_v0"
+}
