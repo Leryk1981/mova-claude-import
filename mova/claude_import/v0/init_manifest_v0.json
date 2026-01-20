@@ -6,7 +6,7 @@
     ".claude/commands/mova_lint.md",
     ".claude/commands/start.md",
     ".claude/hooks/skill-eval.js",
-    ".claude/hooks/skill-eval.sh",
+    ".claude/hooks/mova-guard.js",
     ".claude/hooks/skill-rules.json",
     ".claude/rules/code-style.md",
     ".claude/rules/security.md",

@@ -167,7 +167,7 @@ export function defaultControlV0(): ControlV0 {
     skill_eval: {
       enable: false,
       hooks: {
-        shell: ".claude/hooks/skill-eval.sh",
+        shell: ".claude/hooks/skill-eval.js",
         node: ".claude/hooks/skill-eval.js",
       },
       rules_path: ".claude/hooks/skill-rules.json",

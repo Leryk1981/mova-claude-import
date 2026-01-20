@@ -4,11 +4,17 @@
   "claude_md": {
     "inject_control_entry": true,
     "marker": "<!-- MOVA_CONTROL_ENTRY_V0 -->",
-    "priority_sources": ["CLAUDE.md", ".claude/CLAUDE.md", "~/.claude/CLAUDE.md"]
+    "priority_sources": [
+      "CLAUDE.md",
+      ".claude/CLAUDE.md",
+      "~/.claude/CLAUDE.md"
+    ]
   },
   "claude_memory": {
     "enable": true,
-    "sources": ["CLAUDE.md"]
+    "sources": [
+      "CLAUDE.md"
+    ]
   },
   "overlay": {
     "enable": true
@@ -21,11 +27,18 @@
     "servers": {
       "context7": {
         "command": "cmd",
-        "args": ["/c", "npx", "-y", "@upstash/context7-mcp@latest"]
+        "args": [
+          "/c",
+          "npx",
+          "-y",
+          "@upstash/context7-mcp@latest"
+        ]
       }
     },
     "enable_all_project_mcp_servers": false,
-    "enabled_mcpjson_servers": ["context7"],
+    "enabled_mcpjson_servers": [
+      "context7"
+    ],
     "env_substitutions": {
       "format": "${VAR}",
       "default_format": "${VAR:-default}"
@@ -44,7 +57,7 @@
             "hooks": [
               {
                 "type": "command",
-                "command": "[ \"$(git branch --show-current)\" != \"main\" ] || { echo '{\"block\": true, \"message\": \"Cannot edit files on main branch. Create a feature branch first.\"}' >&2; exit 2; }",
+                "command": "node \".claude/hooks/mova-guard.js\" --task pre-main",
                 "timeout": 5
               }
             ]
@@ -54,7 +67,7 @@
             "hooks": [
               {
                 "type": "command",
-                "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -E -i \"(rm\\\\s+-rf|sudo|curl\\\\s+[^|]+\\\\|\\\\s*sh|wget\\\\s+[^|]+\\\\|\\\\s*sh|mkfs\\\\.|dd\\\\s+if=|chmod\\\\s+777|chown\\\\s+root|\\\\.env|id_rsa|\\\\.pem)\"; then\n  echo '{\"block\": true, \"message\": \"Potentially dangerous command blocked.\"}' >&2\n  exit 2\nfi",
+                "command": "node \".claude/hooks/mova-guard.js\" --task pre-bash",
                 "timeout": 5
               }
             ]
@@ -66,7 +79,7 @@
             "hooks": [
               {
                 "type": "command",
-                "command": "if [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" =~ \\\\.(js|jsx|ts|tsx)$ ]]; then\n  npx prettier --write \"$CLAUDE_TOOL_INPUT_FILE_PATH\" 2>&1\n  exit_code=$?\n  if [ $exit_code -ne 0 ]; then\n    echo '{\"feedback\": \"Formatting failed.\"}' >&2\n    exit 1\n  fi\n  echo '{\"feedback\": \"Formatting applied.\", \"suppressOutput\": true}'\nfi",
+                "command": "node \".claude/hooks/mova-guard.js\" --task post-format",
                 "timeout": 30
               }
             ]
@@ -76,7 +89,7 @@
             "hooks": [
               {
                 "type": "command",
-                "command": "if [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" =~ \\\\.test\\\\.(js|jsx|ts|tsx)$ ]]; then\n  npm test -- --findRelatedTests \"$CLAUDE_TOOL_INPUT_FILE_PATH\" --passWithNoTests 2>&1 | tail -30\n  exit 0\nfi",
+                "command": "node \".claude/hooks/mova-guard.js\" --task post-test",
                 "timeout": 90
               }
             ]
@@ -87,7 +100,7 @@
             "hooks": [
               {
                 "type": "command",
-                "command": ".claude/hooks/skill-eval.sh",
+                "command": "node \".claude/hooks/skill-eval.js\"",
                 "timeout": 5
               }
             ]
@@ -96,7 +109,11 @@
       }
     },
     "permissions": {
-      "allow": ["Bash", "Edit", "Read"],
+      "allow": [
+        "Bash",
+        "Edit",
+        "Read"
+      ],
       "deny": [],
       "on_conflict": "deny_wins",
       "on_unknown": "report_only"
@@ -117,7 +134,7 @@
   "skill_eval": {
     "enable": true,
     "hooks": {
-      "shell": ".claude/hooks/skill-eval.sh",
+      "shell": ".claude/hooks/skill-eval.js",
       "node": ".claude/hooks/skill-eval.js"
     },
     "rules_path": ".claude/hooks/skill-rules.json",
@@ -137,8 +154,18 @@
     "stderr_tail_bytes": 4000,
     "max_event_bytes": 20000,
     "tail_lines": 50,
-    "include_tools": ["Bash", "Read", "Edit", "MultiEdit", "Write"],
-    "include_events": ["PostToolUse", "UserPromptSubmit", "Stop"]
+    "include_tools": [
+      "Bash",
+      "Read",
+      "Edit",
+      "MultiEdit",
+      "Write"
+    ],
+    "include_events": [
+      "PostToolUse",
+      "UserPromptSubmit",
+      "Stop"
+    ]
   },
   "assets": {
     "skills": [
@@ -196,11 +223,6 @@
     ],
     "hooks": [
       {
-        "path": ".claude/hooks/skill-eval.sh",
-        "mode": "copy_through",
-        "source_path": ".claude/hooks/skill-eval.sh"
-      },
-      {
         "path": ".claude/hooks/skill-eval.js",
         "mode": "copy_through",
         "source_path": ".claude/hooks/skill-eval.js"
@@ -209,6 +231,11 @@
         "path": ".claude/hooks/skill-rules.json",
         "mode": "copy_through",
         "source_path": ".claude/hooks/skill-rules.json"
+      },
+      {
+        "path": ".claude/hooks/mova-guard.js",
+        "mode": "copy_through",
+        "source_path": ".claude/hooks/mova-guard.js"
       }
     ],
     "workflows": [],

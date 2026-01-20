@@ -159,7 +159,7 @@ export async function controlPrefillV0(projectDir: string, outDir: string): Prom
   control.assets.dotfiles = assetMap.dotfiles.sort((a, b) => a.path.localeCompare(b.path));
   control.assets.schemas = assetMap.schemas.sort((a, b) => a.path.localeCompare(b.path));
 
-  const hasSkillEval = control.assets.hooks.some((h) => h.path.endsWith("skill-eval.sh") || h.path.endsWith("skill-eval.js"));
+  const hasSkillEval = control.assets.hooks.some((h) => h.path.endsWith("skill-eval.js"));
   if (hasSkillEval) {
     control.skill_eval.enable = true;
   }
