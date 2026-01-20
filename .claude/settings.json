@@ -48,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/mova-observe.js\" --event PostToolUse --stdout-tail-bytes 4000 --stderr-tail-bytes 4000 --max-event-bytes 20000 --tail-lines 50 --output-dir .mova/episodes",
+            "command": "node \".claude/hooks/mova-observe.js\" --event PostToolUse --stdout-tail-bytes 4000 --stderr-tail-bytes 4000 --max-event-bytes 20000 --tail-lines 50 --output-dir .mova/episodes",
             "timeout": 5
           }
         ],
@@ -60,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/skill-eval.sh",
+            "command": ".claude/hooks/skill-eval.sh",
             "timeout": 5
           }
         ]
@@ -69,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/mova-observe.js\" --event UserPromptSubmit --stdout-tail-bytes 4000 --stderr-tail-bytes 4000 --max-event-bytes 20000 --tail-lines 50 --output-dir .mova/episodes",
+            "command": "node \".claude/hooks/mova-observe.js\" --event UserPromptSubmit --stdout-tail-bytes 4000 --stderr-tail-bytes 4000 --max-event-bytes 20000 --tail-lines 50 --output-dir .mova/episodes",
             "timeout": 5
           }
         ]
@@ -80,7 +80,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/mova-observe.js\" --event Stop --stdout-tail-bytes 4000 --stderr-tail-bytes 4000 --max-event-bytes 20000 --tail-lines 50 --output-dir .mova/episodes",
+            "command": "node \".claude/hooks/mova-observe.js\" --event Stop --stdout-tail-bytes 4000 --stderr-tail-bytes 4000 --max-event-bytes 20000 --tail-lines 50 --output-dir .mova/episodes",
             "timeout": 5
           }
         ]
