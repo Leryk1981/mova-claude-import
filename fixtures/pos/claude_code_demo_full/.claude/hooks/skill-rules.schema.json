@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "skill-rules.schema.json",
+  "type": "object",
+  "properties": {
+    "version": { "type": "string" },
+    "threshold": { "type": "number" },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "keywords": { "type": "array", "items": { "type": "string" } },
+          "score": { "type": "number" }
+        },
+        "required": ["id", "keywords", "score"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["version", "threshold", "rules"],
+  "additionalProperties": false
+}

@@ -1,0 +1,8 @@
+{
+  "exclusions": [
+    {
+      "pattern": ".claude/skills/README.md",
+      "reason": "quality_v0 disallows files directly under .claude/skills"
+    }
+  ]
+}

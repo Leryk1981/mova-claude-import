@@ -1,0 +1,102 @@
+{
+  "includeCoAuthoredBy": true,
+  "env": {
+    "INSIDE_CLAUDE_CODE": "1",
+    "BASH_DEFAULT_TIMEOUT_MS": "420000",
+    "BASH_MAX_TIMEOUT_MS": "420000"
+  },
+  "hooks": {
+    "enable": true,
+    "definitions": [],
+    "behavior": {
+      "on_invalid_hook": "report_only"
+    },
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/skill-eval.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ \"$(git branch --show-current)\" != \"main\" ] || { echo '{\"block\": true, \"message\": \"Cannot edit files on main branch. Create a feature branch first.\"}' >&2; exit 2; }",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" =~ \\.(js|jsx|ts|tsx)$ ]]; then\n  npx prettier --write \"$CLAUDE_TOOL_INPUT_FILE_PATH\" 2>&1\n  exit_code=$?\n  if [ $exit_code -ne 0 ]; then\n    echo '{\"feedback\": \"Formatting failed.\"}' >&2\n    exit 1\n  fi\n  echo '{\"feedback\": \"Formatting applied.\", \"suppressOutput\": true}'\nfi",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" =~ \\.test\\.(js|jsx|ts|tsx)$ ]]; then\n  npm test -- --findRelatedTests \"$CLAUDE_TOOL_INPUT_FILE_PATH\" --passWithNoTests 2>&1 | tail -30\n  exit 0\nfi",
+            "timeout": 90
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"feedback\": \"Stop hook executed.\", \"suppressOutput\": true}'",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  },
+  "mcp": {
+    "enableAllProjectMcpServers": false,
+    "enabledMcpjsonServers": ["jira", "github", "linear", "sentry", "memory"]
+  },
+  "permissions": {
+    "allow": ["Bash", "Edit", "Read"],
+    "deny": ["WriteToMain"],
+    "behavior": {
+      "on_conflict": "deny_wins",
+      "on_unknown": "report_only"
+    }
+  },
+  "plugins": {
+    "enable": true,
+    "allowed_plugin_ids": ["typescript-lsp", "pyright-lsp"],
+    "denied_plugin_ids": [],
+    "behavior": {
+      "on_unknown": "report_only"
+    },
+    "enabledPlugins": {
+      "typescript-lsp": true,
+      "pyright-lsp": true
+    }
+  },
+  "lsp": {
+    "enabledPlugins": ["typescript-lsp", "pyright-lsp"]
+  },
+  "claude_md": {
+    "inject_control_entry": true,
+    "marker": "<!-- MOVA_CONTROL_ENTRY_V0 -->"
+  }
+}

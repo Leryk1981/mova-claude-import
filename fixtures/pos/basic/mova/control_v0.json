@@ -1,21 +1,38 @@
 {
+  "$schema": "https://mova.dev/schemas/mova.control_v0.schema.json",
   "version": "control_v0",
   "claude_md": {
     "inject_control_entry": true,
-    "marker": "<!-- MOVA_CONTROL_ENTRY_V0 -->"
+    "marker": "<!-- MOVA_CONTROL_ENTRY_V0 -->",
+    "priority_sources": ["CLAUDE.md", ".claude/CLAUDE.md", "~/.claude/CLAUDE.md"]
+  },
+  "claude_memory": {
+    "enable": true,
+    "sources": ["CLAUDE.md"]
   },
   "overlay": {
     "enable": true
   },
+  "settings": {
+    "include_co_authored_by": true,
+    "env": {}
+  },
   "mcp": {
-    "servers": []
+    "servers": {},
+    "enable_all_project_mcp_servers": false,
+    "enabled_mcpjson_servers": [],
+    "env_substitutions": {
+      "format": "${VAR}",
+      "default_format": "${VAR:-default}"
+    }
   },
   "policy": {
     "mode": "report_only",
     "hooks": {
       "enable": true,
       "on_invalid_hook": "report_only",
-      "definitions": []
+      "definitions": [],
+      "events": {}
     },
     "permissions": {
       "allow": [],
@@ -27,7 +44,35 @@
       "enable": true,
       "allowed_plugin_ids": [],
       "denied_plugin_ids": [],
-      "on_unknown": "report_only"
+      "on_unknown": "report_only",
+      "enabled_plugins": {}
     }
+  },
+  "lsp": {
+    "enabled_plugins": [],
+    "config_path": ".claude/lsp.json",
+    "managed": false
+  },
+  "skill_eval": {
+    "enable": false,
+    "hooks": {
+      "shell": ".claude/hooks/skill-eval.sh",
+      "node": ".claude/hooks/skill-eval.js"
+    },
+    "rules_path": ".claude/hooks/skill-rules.json",
+    "scoring": {
+      "threshold": 0.6
+    }
+  },
+  "assets": {
+    "skills": [],
+    "agents": [],
+    "commands": [],
+    "rules": [],
+    "hooks": [],
+    "workflows": [],
+    "docs": [],
+    "dotfiles": [],
+    "schemas": []
   }
 }

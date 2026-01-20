@@ -57,5 +57,8 @@ artifacts/
 mova/claude_import/v0/runs/
 mova/claude_import/v0/exports/
 
+# ===== external sources (local only) =====
+claude-code-showcase-main/
+
 # (если появится локальный кеш инструментов)
 .mova/

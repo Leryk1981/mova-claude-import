@@ -18,6 +18,7 @@ import { MOVA_SPEC_BINDINGS_V0 } from "./mova_spec_bindings_v0.js";
 import { writeCleanClaudeProfileScaffoldV0 } from "./claude_profile_scaffold_v0.js";
 import {
   controlFromSettingsV0,
+  controlToMcpJson,
   controlToSettingsV0,
   normalizeControlV0,
   type ControlV0,
@@ -39,6 +40,10 @@ async function exists(p: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function isObject(value: any): value is Record<string, any> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 async function sha256File(p: string): Promise<string> {
@@ -257,7 +262,7 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
   }
 
   const control = controlOutput ?? normalizeControlV0({}).control;
-  const mcpJsonParsed = { servers: control.mcp.servers };
+  const mcpJsonParsed = controlToMcpJson(control);
 
   // CLAUDE.md
   let claudeMdRedacted = "";
@@ -477,9 +482,22 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
     })),
   };
 
+  const mcpServersRaw = isObject(mcpJsonParsed?.mcpServers)
+    ? mcpJsonParsed?.mcpServers
+    : mcpJsonParsed?.servers;
+  const mcpServersList = Array.isArray(mcpServersRaw)
+    ? mcpServersRaw
+    : isObject(mcpServersRaw)
+      ? Object.entries(mcpServersRaw).map(([name, server]) => ({
+          name,
+          command: typeof server?.command === "string" ? server.command : "unknown",
+          args: Array.isArray(server?.args) ? server.args : [],
+          env_keys: isObject(server?.env) ? Object.keys(server.env).sort() : [],
+        }))
+      : [];
   const mcpServers = {
     profile_version: "v0",
-    servers: Array.isArray(mcpJsonParsed?.servers) ? mcpJsonParsed?.servers : [],
+    servers: mcpServersList,
   };
 
   if (!opts.dryRun) {

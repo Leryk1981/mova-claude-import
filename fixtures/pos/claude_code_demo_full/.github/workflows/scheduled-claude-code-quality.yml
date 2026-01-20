@@ -1,0 +1,14 @@
+name: scheduled-claude-code-quality
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run quality
+        run: echo "Claude Code quality placeholder"

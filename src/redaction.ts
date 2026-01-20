@@ -8,6 +8,11 @@ export type RedactionHit = {
 
 const KEY_RE = /(api[_-]?key|token|secret|password|authorization|bearer)/i;
 const INLINE_SECRET_RE = /(sk-[a-zA-Z0-9]{8,})/g; // best‑effort
+const PLACEHOLDER_RE = /^\$\{[A-Z0-9_]+(?::-?[^}]+)?\}$/;
+
+function isPlaceholderValue(value: string): boolean {
+  return PLACEHOLDER_RE.test(value.trim());
+}
 
 export function redactText(input: string): { redacted: string; hits: RedactionHit[] } {
   const hits: RedactionHit[] = [];
@@ -43,7 +48,7 @@ export function redactJson(obj: unknown): { redacted: unknown; hits: RedactionHi
     if (typeof x === "object") {
       const out: any = {};
       for (const [k, v] of Object.entries(x)) {
-        if (KEY_RE.test(k) && typeof v === "string") {
+        if (KEY_RE.test(k) && typeof v === "string" && !isPlaceholderValue(v)) {
           hits.push({ rule_id: "json_secret_field", key: k, len: v.length });
           out[k] = `[REDACTED_VALUE_LEN_${v.length}]`;
         } else {

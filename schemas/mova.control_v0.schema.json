@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mova.dev/schemas/mova.control_v0.schema.json",
+  "type": "object",
+  "required": ["version", "claude_md", "overlay", "settings", "mcp", "policy", "assets"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "const": "control_v0"
+    },
+    "claude_md": {
+      "type": "object",
+      "required": ["inject_control_entry", "marker", "priority_sources"],
+      "additionalProperties": false,
+      "properties": {
+        "inject_control_entry": { "type": "boolean" },
+        "marker": { "type": "string" },
+        "priority_sources": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "claude_memory": {
+      "type": "object",
+      "required": ["enable", "sources"],
+      "additionalProperties": false,
+      "properties": {
+        "enable": { "type": "boolean" },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "overlay": {
+      "type": "object",
+      "required": ["enable"],
+      "additionalProperties": false,
+      "properties": {
+        "enable": { "type": "boolean" }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "required": ["include_co_authored_by", "env"],
+      "additionalProperties": false,
+      "properties": {
+        "include_co_authored_by": { "type": "boolean" },
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "mcp": {
+      "type": "object",
+      "required": [
+        "servers",
+        "enable_all_project_mcp_servers",
+        "enabled_mcpjson_servers",
+        "env_substitutions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "servers": {
+          "anyOf": [
+            {
+              "type": "array"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "enable_all_project_mcp_servers": { "type": "boolean" },
+        "enabled_mcpjson_servers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "env_substitutions": {
+          "type": "object",
+          "required": ["format", "default_format"],
+          "additionalProperties": false,
+          "properties": {
+            "format": { "type": "string" },
+            "default_format": { "type": "string" }
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "required": ["mode", "hooks", "permissions", "plugins"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "type": "string" },
+        "hooks": {
+          "type": "object",
+          "required": ["enable", "on_invalid_hook", "definitions", "events"],
+          "additionalProperties": false,
+          "properties": {
+            "enable": { "type": "boolean" },
+            "on_invalid_hook": { "type": "string" },
+            "definitions": { "type": "array" },
+            "events": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "permissions": {
+          "type": "object",
+          "required": ["allow", "deny", "on_conflict", "on_unknown"],
+          "additionalProperties": false,
+          "properties": {
+            "allow": { "type": "array" },
+            "deny": { "type": "array" },
+            "on_conflict": { "type": "string" },
+            "on_unknown": { "type": "string" }
+          }
+        },
+        "plugins": {
+          "type": "object",
+          "required": ["enable", "allowed_plugin_ids", "denied_plugin_ids", "on_unknown", "enabled_plugins"],
+          "additionalProperties": false,
+          "properties": {
+            "enable": { "type": "boolean" },
+            "allowed_plugin_ids": { "type": "array" },
+            "denied_plugin_ids": { "type": "array" },
+            "on_unknown": { "type": "string" },
+            "enabled_plugins": {
+              "type": "object",
+              "additionalProperties": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "lsp": {
+      "type": "object",
+      "required": ["enabled_plugins", "config_path", "managed"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled_plugins": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "config_path": { "type": "string" },
+        "managed": { "type": "boolean" }
+      }
+    },
+    "skill_eval": {
+      "type": "object",
+      "required": ["enable", "hooks", "rules_path", "scoring"],
+      "additionalProperties": false,
+      "properties": {
+        "enable": { "type": "boolean" },
+        "hooks": {
+          "type": "object",
+          "required": ["shell", "node"],
+          "additionalProperties": false,
+          "properties": {
+            "shell": { "type": "string" },
+            "node": { "type": "string" }
+          }
+        },
+        "rules_path": { "type": "string" },
+        "scoring": {
+          "type": "object",
+          "required": ["threshold"],
+          "additionalProperties": false,
+          "properties": {
+            "threshold": { "type": "number" }
+          }
+        }
+      }
+    },
+    "assets": {
+      "type": "object",
+      "required": ["skills", "agents", "commands", "rules", "hooks", "workflows", "docs", "dotfiles", "schemas"],
+      "additionalProperties": false,
+      "properties": {
+        "skills": { "$ref": "#/$defs/asset_list" },
+        "agents": { "$ref": "#/$defs/asset_list" },
+        "commands": { "$ref": "#/$defs/asset_list" },
+        "rules": { "$ref": "#/$defs/asset_list" },
+        "hooks": { "$ref": "#/$defs/asset_list" },
+        "workflows": { "$ref": "#/$defs/asset_list" },
+        "docs": { "$ref": "#/$defs/asset_list" },
+        "dotfiles": { "$ref": "#/$defs/asset_list" },
+        "schemas": { "$ref": "#/$defs/asset_list" }
+      }
+    }
+  },
+  "$defs": {
+    "asset_list": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/asset_item" }
+    },
+    "asset_item": {
+      "type": "object",
+      "required": ["path", "mode"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" },
+        "mode": { "type": "string", "enum": ["copy_through", "managed"] },
+        "source_path": { "type": "string" }
+      }
+    }
+  }
+}
