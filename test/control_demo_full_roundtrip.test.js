@@ -56,8 +56,10 @@ test("control demo full roundtrip is deterministic", async () => {
     out1,
   ]);
 
+  const control = JSON.parse(await fs.readFile(path.join(out1, "mova", "control_v0.json"), "utf8"));
+  const { controlToSettingsV0 } = await import("../dist/control_v0.js");
+  const settingsExpected = JSON.stringify(sortKeys(controlToSettingsV0(control)), null, 2);
   const settingsOut = await normalizeJson(path.join(proj, ".claude", "settings.json"));
-  const settingsExpected = await normalizeJson(path.join(fixture, ".claude", "settings.json"));
   assert.equal(settingsOut, settingsExpected);
 
   const mcpOut = await normalizeJson(path.join(proj, ".mcp.json"));

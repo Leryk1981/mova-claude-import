@@ -3,6 +3,7 @@ import { initProfileV0 } from "./init_v0.js";
 import { controlPrefillV0 } from "./control_prefill_v0.js";
 import { controlCheckV0 } from "./control_check_v0.js";
 import { controlApplyV0 } from "./control_apply_v0.js";
+import { listObservabilityRuns, readObservabilitySummary, tailObservabilityEvents } from "./observe_v0.js";
 
 function getArg(name: string): string | undefined {
   const idx = process.argv.indexOf(name);
@@ -22,6 +23,9 @@ function usage(exitCode = 0) {
     "  mova-claude-import control prefill --project <dir> --out <dir> [--include-local]",
     "  mova-claude-import control check --project <dir> --profile <file>",
     "  mova-claude-import control apply --project <dir> --profile <file> [--mode preview|apply]",
+    "  mova-claude-import observe list --project <dir>",
+    "  mova-claude-import observe tail --project <dir> --run <id> [--limit <n>]",
+    "  mova-claude-import observe summary --project <dir> --run <id>",
     "",
     "Notes:",
     "  - CLAUDE.local.md and *.local.* are excluded unless --include-local",
@@ -122,6 +126,75 @@ if (subcommand === "init") {
           res.exit_code ? `exit_code: ${res.exit_code}` : null,
         ].filter(Boolean).join("\n"));
         if (typeof res.exit_code === "number") process.exit(res.exit_code);
+        process.exit(0);
+      })
+      .catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+  } else {
+    usage(2);
+    process.exit(2);
+  }
+} else if (subcommand === "observe") {
+  const action = process.argv[3];
+  const project = getArg("--project");
+  if (!project) {
+    usage(2);
+    process.exit(2);
+  }
+  if (action === "list") {
+    listObservabilityRuns(project)
+      .then((runs) => {
+        if (!runs.length) {
+          console.log("observe list: no runs");
+          process.exit(0);
+        }
+        for (const run of runs) {
+          console.log(JSON.stringify(run));
+        }
+        process.exit(0);
+      })
+      .catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+  } else if (action === "tail") {
+    const runId = getArg("--run");
+    if (!runId) {
+      usage(2);
+      process.exit(2);
+    }
+    const limitRaw = getArg("--limit");
+    const limit = limitRaw ? Number(limitRaw) : 20;
+    tailObservabilityEvents(project, runId, Number.isFinite(limit) ? limit : 20)
+      .then((lines) => {
+        if (!lines.length) {
+          console.log("observe tail: no events");
+          process.exit(0);
+        }
+        for (const line of lines) {
+          console.log(line);
+        }
+        process.exit(0);
+      })
+      .catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+  } else if (action === "summary") {
+    const runId = getArg("--run");
+    if (!runId) {
+      usage(2);
+      process.exit(2);
+    }
+    readObservabilitySummary(project, runId)
+      .then((summary) => {
+        if (!summary) {
+          console.log("observe summary: not found");
+          process.exit(0);
+        }
+        process.stdout.write(JSON.stringify(summary, null, 2) + "\n");
         process.exit(0);
       })
       .catch((err) => {

@@ -197,6 +197,13 @@ export async function controlCheckV0(projectDir: string, profilePath: string, ou
     }
   }
 
+  if (control.observability.enable && control.observability.writer?.script_path) {
+    const obsPath = path.join(projectDir, control.observability.writer.script_path);
+    if (!(await exists(obsPath))) {
+      missing.push(control.observability.writer.script_path);
+    }
+  }
+
   const assets = [
     ...control.assets.skills,
     ...control.assets.agents,

@@ -76,6 +76,21 @@ export type ControlV0 = {
       threshold: number;
     };
   };
+  observability: {
+    enable: boolean;
+    mode: string;
+    writer: {
+      type: "node";
+      script_path: string;
+    };
+    output_dir: string;
+    stdout_tail_bytes: number;
+    stderr_tail_bytes: number;
+    max_event_bytes: number;
+    tail_lines: number;
+    include_tools: string[];
+    include_events: string[];
+  };
   assets: {
     skills: AssetItem[];
     agents: AssetItem[];
@@ -159,6 +174,21 @@ export function defaultControlV0(): ControlV0 {
       scoring: {
         threshold: 0.6,
       },
+    },
+    observability: {
+      enable: true,
+      mode: "report_only",
+      writer: {
+        type: "node",
+        script_path: ".claude/hooks/mova-observe.js",
+      },
+      output_dir: ".mova/episodes",
+      stdout_tail_bytes: 4000,
+      stderr_tail_bytes: 4000,
+      max_event_bytes: 20000,
+      tail_lines: 50,
+      include_tools: ["Bash", "Read", "Edit", "MultiEdit", "Write"],
+      include_events: ["PostToolUse", "UserPromptSubmit", "Stop"],
     },
     assets: {
       skills: [],
@@ -453,6 +483,74 @@ export function normalizeControlV0(input: any): { control: ControlV0; defaults: 
     "skill_eval.scoring.threshold"
   );
 
+  base.observability.enable = coerceBoolean(
+    src?.observability?.enable,
+    base.observability.enable,
+    defaults,
+    "observability.enable"
+  );
+  base.observability.mode = coerceString(
+    src?.observability?.mode,
+    base.observability.mode,
+    defaults,
+    "observability.mode"
+  );
+  base.observability.writer = coerceRecord(
+    src?.observability?.writer,
+    base.observability.writer,
+    defaults,
+    "observability.writer"
+  ) as ControlV0["observability"]["writer"];
+  base.observability.writer.type = "node";
+  base.observability.writer.script_path = coerceString(
+    base.observability.writer.script_path,
+    defaultControlV0().observability.writer.script_path,
+    defaults,
+    "observability.writer.script_path"
+  );
+  base.observability.output_dir = coerceString(
+    src?.observability?.output_dir,
+    base.observability.output_dir,
+    defaults,
+    "observability.output_dir"
+  );
+  base.observability.stdout_tail_bytes = coerceNumber(
+    src?.observability?.stdout_tail_bytes,
+    base.observability.stdout_tail_bytes,
+    defaults,
+    "observability.stdout_tail_bytes"
+  );
+  base.observability.stderr_tail_bytes = coerceNumber(
+    src?.observability?.stderr_tail_bytes,
+    base.observability.stderr_tail_bytes,
+    defaults,
+    "observability.stderr_tail_bytes"
+  );
+  base.observability.max_event_bytes = coerceNumber(
+    src?.observability?.max_event_bytes,
+    base.observability.max_event_bytes,
+    defaults,
+    "observability.max_event_bytes"
+  );
+  base.observability.tail_lines = coerceNumber(
+    src?.observability?.tail_lines,
+    base.observability.tail_lines,
+    defaults,
+    "observability.tail_lines"
+  );
+  base.observability.include_tools = coerceArray(
+    src?.observability?.include_tools,
+    base.observability.include_tools,
+    defaults,
+    "observability.include_tools"
+  );
+  base.observability.include_events = coerceArray(
+    src?.observability?.include_events,
+    base.observability.include_events,
+    defaults,
+    "observability.include_events"
+  );
+
   base.assets.skills = normalizeAssets(src?.assets?.skills, base.assets.skills, defaults, "assets.skills");
   base.assets.agents = normalizeAssets(src?.assets?.agents, base.assets.agents, defaults, "assets.agents");
   base.assets.commands = normalizeAssets(src?.assets?.commands, base.assets.commands, defaults, "assets.commands");
@@ -623,6 +721,44 @@ export function controlToSettingsV0(control: ControlV0) {
 
   for (const [event, value] of Object.entries(control.policy.hooks.events)) {
     hooks[event] = value;
+  }
+
+  if (control.observability.enable && Array.isArray(control.observability.include_events)) {
+    const baseCommand = `node \"$CLAUDE_PROJECT_DIR/${control.observability.writer.script_path.replace(/^[.\\/]+/, "")}\"`;
+    const commonArgs = [
+      `--stdout-tail-bytes ${control.observability.stdout_tail_bytes}`,
+      `--stderr-tail-bytes ${control.observability.stderr_tail_bytes}`,
+      `--max-event-bytes ${control.observability.max_event_bytes}`,
+      `--tail-lines ${control.observability.tail_lines}`,
+      `--output-dir ${control.observability.output_dir}`,
+    ].join(" ");
+    const postMatcher = control.observability.include_tools.length
+      ? control.observability.include_tools.join("|")
+      : undefined;
+
+    const ensureEventHook = (event: string, matcher?: string) => {
+      const entry: any = {
+        hooks: [
+          {
+            type: "command",
+            command: `${baseCommand} --event ${event} ${commonArgs}`.trim(),
+            timeout: 5,
+          },
+        ],
+      };
+      if (matcher) entry.matcher = matcher;
+      hooks[event] = Array.isArray(hooks[event]) ? [...hooks[event], entry] : [entry];
+    };
+
+    if (control.observability.include_events.includes("PostToolUse")) {
+      ensureEventHook("PostToolUse", postMatcher);
+    }
+    if (control.observability.include_events.includes("UserPromptSubmit")) {
+      ensureEventHook("UserPromptSubmit");
+    }
+    if (control.observability.include_events.includes("Stop")) {
+      ensureEventHook("Stop");
+    }
   }
 
   return {

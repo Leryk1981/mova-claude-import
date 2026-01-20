@@ -6,7 +6,7 @@
 
 - создаёт полный “эталонный” скелет Claude Code‑проекта;
 - импортирует существующий проект в чистую структуру;
-- добавляет слой контроля и отчёты без “магии” и без LLM.
+- добавляет слой контроля, наблюдаемости и отчёты без “магии” и без LLM.
 
 ## Что было → что стало
 
@@ -100,6 +100,25 @@ Schema: `schemas/mova.control_v0.schema.json`.
 
 - `mova/claude_import/v0/*` — отчёты импорта и контроля качества
 - `mova/claude_control/v0/runs/*` — планы/отчёты control‑команд
+- `.mova/episodes/<run_id>/*` — наблюдаемость выполнения (events.jsonl, summary.json)
+
+## Наблюдаемость (Observability Writer)
+
+Writer включается из `mova/control_v0.json` и через hooks пишет эпизоды:
+
+- события в `.mova/episodes/<run_id>/events.jsonl`
+- сводка в `.mova/episodes/<run_id>/summary.json`
+- индекс прогонов в `.mova/episodes/index.jsonl`
+
+Отключить можно через `observability.enable=false` в `mova/control_v0.json`.
+
+Минимальные команды:
+
+```
+npx mova-claude-import observe list --project <dir>
+npx mova-claude-import observe tail --project <dir> --run <id>
+npx mova-claude-import observe summary --project <dir> --run <id>
+```
 
 ## Для автоматизации
 

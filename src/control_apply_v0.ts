@@ -6,6 +6,7 @@ import { buildMovaControlEntryV0, MOVA_CONTROL_ENTRY_MARKER } from "./mova_overl
 import { ensureClaudeControlSurfacesV0 } from "./claude_profile_scaffold_v0.js";
 import { controlToMcpJson, controlToSettingsV0, normalizeControlV0 } from "./control_v0.js";
 import { validateControlV0Schema } from "./control_v0_schema.js";
+import { getMovaObserveScriptV0 } from "./observability_writer_v0.js";
 
 type ApplyResult = {
   run_id: string;
@@ -144,6 +145,12 @@ export async function controlApplyV0(
         const lspPath = path.join(projectDir, control.lsp.config_path);
         await writeJson(lspPath, { enabled_plugins: control.lsp.enabled_plugins });
         applied.lsp = true;
+      }
+
+      if (control.observability.enable && control.observability.writer?.script_path) {
+        const scriptPath = path.join(projectDir, control.observability.writer.script_path);
+        await fs.mkdir(path.dirname(scriptPath), { recursive: true });
+        await fs.writeFile(scriptPath, getMovaObserveScriptV0(), "utf8");
       }
     } else if (profile?.anthropic?.mcp?.servers && mcpExists) {
       const mcp = await readJson(mcpPath);
