@@ -622,9 +622,11 @@ export function controlFromSettingsV0(
       "policy.permissions.deny"
     );
     const defaultMode = settings?.permissions?.defaultMode;
-    if (defaultMode === "allow" || defaultMode === "deny") {
-      base.policy.permissions.on_unknown = defaultMode;
-    } else if (defaultMode === "ask") {
+    if (defaultMode === "bypassPermissions" || defaultMode === "dontAsk") {
+      base.policy.permissions.on_unknown = "allow";
+    } else if (defaultMode === "plan") {
+      base.policy.permissions.on_unknown = "deny";
+    } else if (defaultMode === "acceptEdits" || defaultMode === "default" || defaultMode === "delegate") {
       base.policy.permissions.on_unknown = "report_only";
     }
 
@@ -733,11 +735,11 @@ export function controlToSettingsV0(control: ControlV0) {
     permissions.deny = control.policy.permissions.deny;
   }
   if (control.policy.permissions.on_unknown === "allow") {
-    permissions.defaultMode = "allow";
+    permissions.defaultMode = "bypassPermissions";
   } else if (control.policy.permissions.on_unknown === "deny") {
-    permissions.defaultMode = "deny";
+    permissions.defaultMode = "plan";
   } else {
-    permissions.defaultMode = "ask";
+    permissions.defaultMode = "acceptEdits";
   }
   if (Object.keys(permissions).length > 0) {
     settings.permissions = permissions;

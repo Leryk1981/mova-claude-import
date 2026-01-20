@@ -93,7 +93,7 @@
       "Edit",
       "Read"
     ],
-    "defaultMode": "ask"
+    "defaultMode": "acceptEdits"
   },
   "mcp": {
     "enableAllProjectMcpServers": false,
