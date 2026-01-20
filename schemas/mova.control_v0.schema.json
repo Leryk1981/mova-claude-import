@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mova.dev/schemas/mova.control_v0.schema.json",
   "type": "object",
-  "required": ["version", "claude_md", "overlay", "settings", "mcp", "policy", "assets"],
+  "required": ["version", "claude_md", "overlay", "settings", "mcp", "policy", "assets", "observability"],
   "additionalProperties": false,
   "properties": {
     "$schema": {
@@ -178,6 +178,42 @@
             "threshold": { "type": "number" }
           }
         }
+      }
+    },
+    "observability": {
+      "type": "object",
+      "required": [
+        "enable",
+        "mode",
+        "writer",
+        "output_dir",
+        "stdout_tail_bytes",
+        "stderr_tail_bytes",
+        "max_event_bytes",
+        "tail_lines",
+        "include_tools",
+        "include_events"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "enable": { "type": "boolean" },
+        "mode": { "type": "string" },
+        "writer": {
+          "type": "object",
+          "required": ["type", "script_path"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "const": "node" },
+            "script_path": { "type": "string" }
+          }
+        },
+        "output_dir": { "type": "string" },
+        "stdout_tail_bytes": { "type": "number" },
+        "stderr_tail_bytes": { "type": "number" },
+        "max_event_bytes": { "type": "number" },
+        "tail_lines": { "type": "number" },
+        "include_tools": { "type": "array", "items": { "type": "string" } },
+        "include_events": { "type": "array", "items": { "type": "string" } }
       }
     },
     "assets": {

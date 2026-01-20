@@ -64,6 +64,21 @@
       "threshold": 0.6
     }
   },
+  "observability": {
+    "enable": true,
+    "mode": "report_only",
+    "writer": {
+      "type": "node",
+      "script_path": ".claude/hooks/mova-observe.js"
+    },
+    "output_dir": ".mova/episodes",
+    "stdout_tail_bytes": 4000,
+    "stderr_tail_bytes": 4000,
+    "max_event_bytes": 20000,
+    "tail_lines": 50,
+    "include_tools": ["Bash", "Read", "Edit", "MultiEdit", "Write"],
+    "include_events": ["PostToolUse", "UserPromptSubmit", "Stop"]
+  },
   "assets": {
     "skills": [],
     "agents": [],

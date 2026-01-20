@@ -6,11 +6,16 @@ import { buildMovaControlEntryV0, MOVA_CONTROL_ENTRY_MARKER } from "./mova_overl
 import { ensureClaudeControlSurfacesV0 } from "./claude_profile_scaffold_v0.js";
 import { controlToMcpJson, controlToSettingsV0, normalizeControlV0 } from "./control_v0.js";
 import { validateControlV0Schema } from "./control_v0_schema.js";
+import { getMovaObserveScriptV0 } from "./observability_writer_v0.js";
 
 type ApplyResult = {
   run_id: string;
   report_path: string;
   exit_code?: number;
+};
+
+type ApplyOptions = {
+  assetSourceRoot?: string;
 };
 
 async function exists(p: string): Promise<boolean> {
@@ -36,6 +41,37 @@ function computeRunId(parts: string[]): string {
   return stableSha256(parts.join("|")).slice(0, 16);
 }
 
+function mergeOverlayValue(existing: any, incoming: any): any {
+  if (existing === undefined) return incoming;
+  const existingArr = Array.isArray(existing) ? existing : null;
+  const incomingArr = Array.isArray(incoming) ? incoming : null;
+  if (existingArr || incomingArr) {
+    const left = existingArr ?? (existing === undefined ? [] : [existing]);
+    const right = incomingArr ?? (incoming === undefined ? [] : [incoming]);
+    const seen = new Set(left.map((item) => stableStringify(item)));
+    const merged = left.slice();
+    for (const item of right) {
+      const key = stableStringify(item);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(item);
+    }
+    return merged;
+  }
+  if (existing && typeof existing === "object" && incoming && typeof incoming === "object") {
+    const out: Record<string, any> = { ...existing };
+    for (const [key, value] of Object.entries(incoming)) {
+      out[key] = mergeOverlayValue(out[key], value);
+    }
+    return out;
+  }
+  return existing;
+}
+
+function mergeSettingsOverlay(existing: any, incoming: any) {
+  return mergeOverlayValue(existing ?? {}, incoming ?? {});
+}
+
 function updateClaude(content: string, marker: string, block: string): string {
   if (content.includes(marker)) {
     const idx = content.indexOf(marker);
@@ -51,7 +87,8 @@ export async function controlApplyV0(
   projectDir: string,
   profilePath: string,
   outDir: string,
-  mode?: string
+  mode?: string,
+  options?: ApplyOptions
 ): Promise<ApplyResult> {
   await ensureClaudeControlSurfacesV0(projectDir);
   const profile = await readJson(profilePath);
@@ -77,6 +114,8 @@ export async function controlApplyV0(
     }
   }
   const applyMode = mode ?? (isControlV0 && control?.policy?.mode === "report_only" ? "preview" : profile?.apply?.default_apply_mode) ?? "preview";
+  const isOverlay = applyMode === "overlay";
+  const assetSourceRoot = options?.assetSourceRoot ?? projectDir;
 
   const claudePath = path.join(projectDir, "CLAUDE.md");
   const mcpPath = path.join(projectDir, ".mcp.json");
@@ -100,7 +139,7 @@ export async function controlApplyV0(
   const controlEntry = buildMovaControlEntryV0(overlayParams);
 
   const applied = { claude_md: false, mcp_json: false, settings: false, assets: false, lsp: false };
-  if (applyMode === "apply") {
+  if (applyMode === "apply" || applyMode === "overlay") {
     if ((control?.claude_md?.inject_control_entry ?? profile?.anthropic?.claude_md?.inject_control_entry) && claudeExists) {
       const raw = await fs.readFile(claudePath, "utf8");
       const updated = updateClaude(raw, marker, controlEntry);
@@ -108,10 +147,21 @@ export async function controlApplyV0(
       applied.claude_md = true;
     }
     if (control) {
-      await writeJson(path.join(projectDir, ".claude", "settings.json"), controlToSettingsV0(control));
-      await writeJson(path.join(projectDir, ".mcp.json"), controlToMcpJson(control));
+      const settingsPath = path.join(projectDir, ".claude", "settings.json");
+      const settingsGenerated = controlToSettingsV0(control);
+      if (isOverlay && (await exists(settingsPath))) {
+        const current = await readJson(settingsPath);
+        const merged = mergeSettingsOverlay(current, settingsGenerated);
+        await writeJson(settingsPath, merged);
+      } else {
+        await writeJson(settingsPath, settingsGenerated);
+      }
       applied.settings = true;
-      applied.mcp_json = true;
+
+      if (!(isOverlay && (await exists(mcpPath)))) {
+        await writeJson(path.join(projectDir, ".mcp.json"), controlToMcpJson(control));
+        applied.mcp_json = true;
+      }
 
       const assets = [
         ...control.assets.skills,
@@ -126,8 +176,9 @@ export async function controlApplyV0(
       ];
       for (const asset of assets) {
         const target = path.join(projectDir, asset.path);
+        if (isOverlay && (await exists(target))) continue;
         const sourceRel = asset.source_path ?? asset.path;
-        const source = path.join(projectDir, sourceRel);
+        const source = path.isAbsolute(sourceRel) ? sourceRel : path.join(assetSourceRoot, sourceRel);
         try {
           await fs.stat(source);
         } catch {
@@ -142,8 +193,18 @@ export async function controlApplyV0(
 
       if (control.lsp.managed && Array.isArray(control.lsp.enabled_plugins)) {
         const lspPath = path.join(projectDir, control.lsp.config_path);
-        await writeJson(lspPath, { enabled_plugins: control.lsp.enabled_plugins });
+        if (!(isOverlay && (await exists(lspPath)))) {
+          await writeJson(lspPath, { enabled_plugins: control.lsp.enabled_plugins });
+        }
         applied.lsp = true;
+      }
+
+      if (control.observability.enable && control.observability.writer?.script_path) {
+        const scriptPath = path.join(projectDir, control.observability.writer.script_path);
+        if (!(isOverlay && (await exists(scriptPath)))) {
+          await fs.mkdir(path.dirname(scriptPath), { recursive: true });
+          await fs.writeFile(scriptPath, getMovaObserveScriptV0(), "utf8");
+        }
       }
     } else if (profile?.anthropic?.mcp?.servers && mcpExists) {
       const mcp = await readJson(mcpPath);
@@ -159,7 +220,7 @@ export async function controlApplyV0(
     project_dir: projectDir,
     profile_path: profilePath,
     mode: applyMode,
-    outcome_code: applyMode === "apply" ? "APPLIED" : "PREVIEW",
+    outcome_code: applyMode === "apply" || applyMode === "overlay" ? "APPLIED" : "PREVIEW",
     applied,
   };
 
