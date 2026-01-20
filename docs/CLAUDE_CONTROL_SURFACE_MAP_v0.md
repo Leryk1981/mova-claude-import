@@ -76,3 +76,5 @@
 - `policy.mode` по умолчанию `report_only`.
 - Для жёсткого режима включайте блокирующие PreToolUse и задавайте строгую политику в `permissions` и `hooks`.
 - Детали CI/strict поведения — в `docs/OPERATOR_GUIDE_v0.md`.
+
+Примечание по permissions: в `.claude/settings.json` используется `permissions.defaultMode` с режимами Claude Code (`acceptEdits`, `plan`, `bypassPermissions`, `default`, `delegate`, `dontAsk`). В `control_v0` это маппится из `policy.permissions.on_unknown`.

@@ -98,12 +98,24 @@
   },
   "mcp": {
     "enable_all_project_mcp_servers": false,
-    "enabled_mcpjson_servers": [],
+    "enabled_mcpjson_servers": [
+      "context7"
+    ],
     "env_substitutions": {
       "default_format": "${VAR:-default}",
       "format": "${VAR}"
     },
-    "servers": {}
+    "servers": {
+      "context7": {
+        "command": "cmd",
+        "args": [
+          "/c",
+          "npx",
+          "-y",
+          "@upstash/context7-mcp@latest"
+        ]
+      }
+    }
   },
   "observability": {
     "enable": true,

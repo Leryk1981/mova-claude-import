@@ -22,6 +22,8 @@
 - `.claude/settings.json`
 - `.mcp.json`
 
+В `.claude/settings.json` используются режимы `permissions.defaultMode` из Claude Code (`acceptEdits`, `plan`, `bypassPermissions`, `default`, `delegate`, `dontAsk`). MOVA маппит их из `policy.permissions.on_unknown`.
+
 ## Как MOVA слой добавляет наблюдаемость
 
 - Импорт и проверки пишут отчёты в `mova/claude_import/v0/`.

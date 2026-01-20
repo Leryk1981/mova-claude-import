@@ -621,61 +621,20 @@ export function controlFromSettingsV0(
       defaults,
       "policy.permissions.deny"
     );
-    base.policy.permissions.on_conflict = coerceString(
-      settings?.permissions?.behavior?.on_conflict,
-      base.policy.permissions.on_conflict,
-      defaults,
-      "policy.permissions.on_conflict"
-    );
-    base.policy.permissions.on_unknown = coerceString(
-      settings?.permissions?.behavior?.on_unknown,
-      base.policy.permissions.on_unknown,
-      defaults,
-      "policy.permissions.on_unknown"
-    );
+    const defaultMode = settings?.permissions?.defaultMode;
+    if (defaultMode === "bypassPermissions" || defaultMode === "dontAsk") {
+      base.policy.permissions.on_unknown = "allow";
+    } else if (defaultMode === "plan") {
+      base.policy.permissions.on_unknown = "deny";
+    } else if (defaultMode === "acceptEdits" || defaultMode === "default" || defaultMode === "delegate") {
+      base.policy.permissions.on_unknown = "report_only";
+    }
 
-    base.policy.plugins.enable = coerceBoolean(
-      settings?.plugins?.enable,
-      base.policy.plugins.enable,
-      defaults,
-      "policy.plugins.enable"
-    );
-    base.policy.plugins.allowed_plugin_ids = coerceArray(
-      settings?.plugins?.allowed_plugin_ids,
-      base.policy.plugins.allowed_plugin_ids,
-      defaults,
-      "policy.plugins.allowed_plugin_ids"
-    );
-    base.policy.plugins.denied_plugin_ids = coerceArray(
-      settings?.plugins?.denied_plugin_ids,
-      base.policy.plugins.denied_plugin_ids,
-      defaults,
-      "policy.plugins.denied_plugin_ids"
-    );
-    base.policy.plugins.on_unknown = coerceString(
-      settings?.plugins?.behavior?.on_unknown,
-      base.policy.plugins.on_unknown,
-      defaults,
-      "policy.plugins.on_unknown"
-    );
     base.policy.plugins.enabled_plugins = coerceRecord(
-      settings?.plugins?.enabledPlugins,
+      settings?.enabledPlugins,
       base.policy.plugins.enabled_plugins,
       defaults,
       "policy.plugins.enabled_plugins"
-    );
-
-    base.claude_md.inject_control_entry = coerceBoolean(
-      settings?.claude_md?.inject_control_entry,
-      base.claude_md.inject_control_entry,
-      defaults,
-      "claude_md.inject_control_entry"
-    );
-    base.claude_md.marker = coerceString(
-      settings?.claude_md?.marker,
-      base.claude_md.marker,
-      defaults,
-      "claude_md.marker"
     );
 
     base.mcp.enable_all_project_mcp_servers = coerceBoolean(
@@ -711,13 +670,7 @@ export function controlFromSettingsV0(
 }
 
 export function controlToSettingsV0(control: ControlV0) {
-  const hooks = {
-    enable: control.policy.hooks.enable,
-    definitions: control.policy.hooks.definitions,
-    behavior: {
-      on_invalid_hook: control.policy.hooks.on_invalid_hook,
-    },
-  } as Record<string, any>;
+  const hooks = {} as Record<string, any>;
 
   for (const [event, value] of Object.entries(control.policy.hooks.events)) {
     hooks[event] = value;
@@ -762,39 +715,48 @@ export function controlToSettingsV0(control: ControlV0) {
     }
   }
 
-  return {
+  const settings: Record<string, any> = {
     includeCoAuthoredBy: control.settings.include_co_authored_by,
-    env: control.settings.env,
-    mcp: {
+  };
+
+  if (isObject(control.settings.env) && Object.keys(control.settings.env).length > 0) {
+    settings.env = control.settings.env;
+  }
+
+  if (Object.keys(hooks).length > 0) {
+    settings.hooks = hooks;
+  }
+
+  const permissions: Record<string, any> = {};
+  if (Array.isArray(control.policy.permissions.allow) && control.policy.permissions.allow.length > 0) {
+    permissions.allow = control.policy.permissions.allow;
+  }
+  if (Array.isArray(control.policy.permissions.deny) && control.policy.permissions.deny.length > 0) {
+    permissions.deny = control.policy.permissions.deny;
+  }
+  if (control.policy.permissions.on_unknown === "allow") {
+    permissions.defaultMode = "bypassPermissions";
+  } else if (control.policy.permissions.on_unknown === "deny") {
+    permissions.defaultMode = "plan";
+  } else {
+    permissions.defaultMode = "acceptEdits";
+  }
+  if (Object.keys(permissions).length > 0) {
+    settings.permissions = permissions;
+  }
+
+  if (control.mcp.enable_all_project_mcp_servers || control.mcp.enabled_mcpjson_servers.length > 0) {
+    settings.mcp = {
       enableAllProjectMcpServers: control.mcp.enable_all_project_mcp_servers,
       enabledMcpjsonServers: control.mcp.enabled_mcpjson_servers,
-    },
-    permissions: {
-      allow: control.policy.permissions.allow,
-      deny: control.policy.permissions.deny,
-      behavior: {
-        on_conflict: control.policy.permissions.on_conflict,
-        on_unknown: control.policy.permissions.on_unknown,
-      },
-    },
-    plugins: {
-      enable: control.policy.plugins.enable,
-      allowed_plugin_ids: control.policy.plugins.allowed_plugin_ids,
-      denied_plugin_ids: control.policy.plugins.denied_plugin_ids,
-      behavior: {
-        on_unknown: control.policy.plugins.on_unknown,
-      },
-      enabledPlugins: control.policy.plugins.enabled_plugins,
-    },
-    lsp: {
-      enabledPlugins: control.lsp.enabled_plugins,
-    },
-    hooks,
-    claude_md: {
-      inject_control_entry: control.claude_md.inject_control_entry,
-      marker: control.claude_md.marker,
-    },
-  };
+    };
+  }
+
+  if (isObject(control.policy.plugins.enabled_plugins) && Object.keys(control.policy.plugins.enabled_plugins).length > 0) {
+    settings.enabledPlugins = control.policy.plugins.enabled_plugins;
+  }
+
+  return settings;
 }
 
 export function controlToMcpJson(control: ControlV0) {

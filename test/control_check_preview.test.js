@@ -19,7 +19,7 @@ test("control check does not modify project files", async () => {
   await fs.rm(tmp, { recursive: true, force: true });
   await fs.mkdir(proj, { recursive: true });
   await fs.writeFile(path.join(proj, "CLAUDE.md"), "Hello\n", "utf8");
-  await fs.writeFile(path.join(proj, ".mcp.json"), "{\"servers\":[]}", "utf8");
+  await fs.writeFile(path.join(proj, ".mcp.json"), "{\"mcpServers\":{}}", "utf8");
 
   const claudeBefore = await readFile(path.join(proj, "CLAUDE.md"));
   const mcpBefore = await readFile(path.join(proj, ".mcp.json"));
@@ -36,3 +36,4 @@ test("control check does not modify project files", async () => {
   const entries = await fs.readdir(runsDir);
   assert.ok(entries.length > 0);
 });
+
