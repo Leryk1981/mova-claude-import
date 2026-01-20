@@ -4,6 +4,7 @@ import { controlPrefillV0 } from "./control_prefill_v0.js";
 import { controlCheckV0 } from "./control_check_v0.js";
 import { controlApplyV0 } from "./control_apply_v0.js";
 import { listObservabilityRuns, readObservabilitySummary, tailObservabilityEvents } from "./observe_v0.js";
+import { listPresets, readPresetControlRaw, resolvePreset } from "./presets_v0.js";
 
 function getArg(name: string): string | undefined {
   const idx = process.argv.indexOf(name);
@@ -19,10 +20,12 @@ function usage(exitCode = 0) {
     "",
     "Usage:",
     "  mova-claude-import --project <dir> [--out <dir>] [--dry-run] [--strict] [--include-local] [--include-user-settings] [--no-emit-profile] [--no-emit-overlay] [--zip] [--zip-name <name>]",
-    "  mova-claude-import init --out <dir> [--zip]",
+    "  mova-claude-import init --out <dir> [--zip] [--preset <name>]",
     "  mova-claude-import control prefill --project <dir> --out <dir> [--include-local]",
     "  mova-claude-import control check --project <dir> --profile <file>",
-    "  mova-claude-import control apply --project <dir> --profile <file> [--mode preview|apply]",
+    "  mova-claude-import control apply --project <dir> --profile <file> [--mode preview|apply|overlay] [--preset <name>]",
+    "  mova-claude-import preset list",
+    "  mova-claude-import preset show <name>",
     "  mova-claude-import observe list --project <dir>",
     "  mova-claude-import observe tail --project <dir> --run <id> [--limit <n>]",
     "  mova-claude-import observe summary --project <dir> --run <id>",
@@ -34,6 +37,7 @@ function usage(exitCode = 0) {
     "  - overlay emission is enabled by default; use --no-emit-overlay to skip",
     "  - zip export is disabled by default; use --zip to enable",
     "  - init creates a clean Anthropic profile v0 scaffold",
+    "  - init --preset uses preset control_v0.json + assets",
     "  - control commands run in preview by default",
   ].join("\n"));
   process.exit(exitCode);
@@ -53,15 +57,41 @@ if (subcommand === "init") {
     process.exit(2);
   }
   const emitZip = hasFlag("--zip");
-  initProfileV0(out, emitZip)
-    .then((res) => {
-      process.stdout.write(JSON.stringify(res, null, 2) + "\n");
-      process.exit(0);
-    })
-    .catch((err) => {
-      console.error(err);
-      process.exit(1);
-    });
+  const presetName = getArg("--preset");
+  if (presetName) {
+    resolvePreset(presetName)
+      .then(async (preset) => {
+        if (!preset) {
+          console.error(`Preset not found: ${presetName}`);
+          process.exit(2);
+        }
+        const raw = await readPresetControlRaw(presetName);
+        const control = raw ? JSON.parse(raw) : null;
+        if (!control) {
+          console.error(`Preset control missing: ${presetName}`);
+          process.exit(2);
+        }
+        return initProfileV0(out, emitZip, { controlOverride: control, assetsRoot: preset.assets_root });
+      })
+      .then((res) => {
+        process.stdout.write(JSON.stringify(res, null, 2) + "\n");
+        process.exit(0);
+      })
+      .catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+  } else {
+    initProfileV0(out, emitZip)
+      .then((res) => {
+        process.stdout.write(JSON.stringify(res, null, 2) + "\n");
+        process.exit(0);
+      })
+      .catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+  }
 } else if (subcommand === "control") {
   const action = process.argv[3];
   const project = getArg("--project");
@@ -111,21 +141,85 @@ if (subcommand === "init") {
         process.exit(1);
       });
   } else if (action === "apply") {
-    const profile = getArg("--profile");
-    if (!profile) {
+    const out = getArg("--out") || project;
+    const mode = getArg("--mode");
+    const presetName = getArg("--preset");
+    if (presetName) {
+      resolvePreset(presetName)
+        .then(async (preset) => {
+          if (!preset) {
+            console.error(`Preset not found: ${presetName}`);
+            process.exit(2);
+          }
+          return controlApplyV0(project, preset.control_path, out, mode, {
+            assetSourceRoot: preset.assets_root,
+          });
+        })
+        .then((res) => {
+          console.log([
+            res.exit_code && res.exit_code !== 0 ? "control apply: issues" : "control apply: ok",
+            `report: ${res.report_path}`,
+            res.exit_code ? `exit_code: ${res.exit_code}` : null,
+          ].filter(Boolean).join("\n"));
+          if (typeof res.exit_code === "number") process.exit(res.exit_code);
+          process.exit(0);
+        })
+        .catch((err) => {
+          console.error(err);
+          process.exit(1);
+        });
+    } else {
+      const profile = getArg("--profile");
+      if (!profile) {
+        usage(2);
+        process.exit(2);
+      }
+      controlApplyV0(project, profile, out, mode)
+        .then((res) => {
+          console.log([
+            res.exit_code && res.exit_code !== 0 ? "control apply: issues" : "control apply: ok",
+            `report: ${res.report_path}`,
+            res.exit_code ? `exit_code: ${res.exit_code}` : null,
+          ].filter(Boolean).join("\n"));
+          if (typeof res.exit_code === "number") process.exit(res.exit_code);
+          process.exit(0);
+        })
+        .catch((err) => {
+          console.error(err);
+          process.exit(1);
+        });
+    }
+  } else {
+    usage(2);
+    process.exit(2);
+  }
+} else if (subcommand === "preset") {
+  const action = process.argv[3];
+  if (action === "list") {
+    listPresets()
+      .then((presets) => {
+        for (const name of presets) {
+          console.log(name);
+        }
+        process.exit(0);
+      })
+      .catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+  } else if (action === "show") {
+    const name = process.argv[4];
+    if (!name) {
       usage(2);
       process.exit(2);
     }
-    const out = getArg("--out") || project;
-    const mode = getArg("--mode");
-    controlApplyV0(project, profile, out, mode)
-      .then((res) => {
-        console.log([
-          res.exit_code && res.exit_code !== 0 ? "control apply: issues" : "control apply: ok",
-          `report: ${res.report_path}`,
-          res.exit_code ? `exit_code: ${res.exit_code}` : null,
-        ].filter(Boolean).join("\n"));
-        if (typeof res.exit_code === "number") process.exit(res.exit_code);
+    readPresetControlRaw(name)
+      .then((raw) => {
+        if (!raw) {
+          console.error(`Preset not found: ${name}`);
+          process.exit(2);
+        }
+        process.stdout.write(raw + "\n");
         process.exit(0);
       })
       .catch((err) => {

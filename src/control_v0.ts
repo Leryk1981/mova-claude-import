@@ -724,7 +724,8 @@ export function controlToSettingsV0(control: ControlV0) {
   }
 
   if (control.observability.enable && Array.isArray(control.observability.include_events)) {
-    const baseCommand = `node \"$CLAUDE_PROJECT_DIR/${control.observability.writer.script_path.replace(/^[.\\/]+/, "")}\"`;
+    const scriptRel = control.observability.writer.script_path.replace(/^[\\/]+/, "");
+    const baseCommand = `node \"$CLAUDE_PROJECT_DIR/${scriptRel}\"`;
     const commonArgs = [
       `--stdout-tail-bytes ${control.observability.stdout_tail_bytes}`,
       `--stderr-tail-bytes ${control.observability.stderr_tail_bytes}`,

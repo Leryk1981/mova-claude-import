@@ -48,6 +48,13 @@ npx mova-claude-import control check --project <dir> --profile <dir>/mova/contro
 npx mova-claude-import --project <in> --out <out> --zip
 ```
 
+### Quick start (existing Claude folder + preset)
+
+```
+npx -y mova-claude-import@<version> preset list
+npx -y mova-claude-import@<version> control apply --preset safe_observable_v0 --project . --mode overlay
+```
+
 Дальше используйте единый контрольный файл и выполните rebuild/import:
 
 ```
@@ -100,7 +107,8 @@ Schema: `schemas/mova.control_v0.schema.json`.
 
 - `mova/claude_import/v0/*` — отчёты импорта и контроля качества
 - `mova/claude_control/v0/runs/*` — планы/отчёты control‑команд
-- `.mova/episodes/<run_id>/*` — наблюдаемость выполнения (events.jsonl, summary.json)
+- `.mova/episodes/index.jsonl` — индекс наблюдаемости
+- `.mova/episodes/<run_id>/summary.json` — краткая сводка последнего прогона
 
 ## Наблюдаемость (Observability Writer)
 
@@ -123,6 +131,18 @@ npx mova-claude-import observe summary --project <dir> --run <id>
 ## Для автоматизации
 
 Подробности по `--strict`, кодам завершения и CI‑проверкам — в `docs/OPERATOR_GUIDE_v0.md`.
+
+## Preset: safe_observable_v0
+
+Что делает:
+- включает observability writer и hooks
+- добавляет guardrails на опасные команды и изменения в `main`
+- добавляет start/finish команды и базовые skills
+- включает skill-eval hook и правила
+
+Что не делает:
+- не включает MCP (по умолчанию пусто)
+- не трогает секреты или локальные креды
 
 ## Ссылки
 

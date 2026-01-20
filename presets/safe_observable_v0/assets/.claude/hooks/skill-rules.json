@@ -1,0 +1,26 @@
+{
+  "version": "v0",
+  "threshold": 0.6,
+  "rules": [
+    {
+      "id": "testing-patterns",
+      "keywords": ["test", "tdd", "mock", "coverage"],
+      "score": 0.8
+    },
+    {
+      "id": "systematic-debugging",
+      "keywords": ["debug", "trace", "repro", "bug"],
+      "score": 0.8
+    },
+    {
+      "id": "security-basics",
+      "keywords": ["security", "vuln", "xss", "csrf", "auth"],
+      "score": 0.8
+    },
+    {
+      "id": "git-workflow",
+      "keywords": ["git", "branch", "merge", "rebase"],
+      "score": 0.7
+    }
+  ]
+}
