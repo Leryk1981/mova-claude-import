@@ -94,10 +94,12 @@ if (subcommand === "init") {
     controlCheckV0(project, profile, out)
       .then((res) => {
         console.log([
-          "control check: ok",
+          res.exit_code && res.exit_code !== 0 ? "control check: issues" : "control check: ok",
           `plan: ${res.plan_path}`,
           `summary: ${res.summary_path}`,
-        ].join("\n"));
+          res.exit_code ? `exit_code: ${res.exit_code}` : null,
+        ].filter(Boolean).join("\n"));
+        if (typeof res.exit_code === "number") process.exit(res.exit_code);
         process.exit(0);
       })
       .catch((err) => {
@@ -115,9 +117,11 @@ if (subcommand === "init") {
     controlApplyV0(project, profile, out, mode)
       .then((res) => {
         console.log([
-          "control apply: ok",
+          res.exit_code && res.exit_code !== 0 ? "control apply: issues" : "control apply: ok",
           `report: ${res.report_path}`,
-        ].join("\n"));
+          res.exit_code ? `exit_code: ${res.exit_code}` : null,
+        ].filter(Boolean).join("\n"));
+        if (typeof res.exit_code === "number") process.exit(res.exit_code);
         process.exit(0);
       })
       .catch((err) => {

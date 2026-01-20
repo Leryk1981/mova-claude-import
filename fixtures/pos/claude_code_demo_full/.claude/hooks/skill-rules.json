@@ -1,0 +1,21 @@
+{
+  "version": "v0",
+  "threshold": 0.6,
+  "rules": [
+    {
+      "id": "graphql-schema",
+      "keywords": ["graphql", "schema", "resolver"],
+      "score": 0.9
+    },
+    {
+      "id": "testing-patterns",
+      "keywords": ["test", "jest", "vitest", "tdd"],
+      "score": 0.8
+    },
+    {
+      "id": "react-ui-patterns",
+      "keywords": ["react", "ui", "component", "hook"],
+      "score": 0.7
+    }
+  ]
+}

@@ -33,6 +33,15 @@
 
 ## Быстрый старт
 
+### Recommended flow (control_v0)
+
+```
+npx mova-claude-import init --out <dir>
+npx mova-claude-import control prefill --project <dir> --out <dir>
+npx mova-claude-import control apply --project <dir> --profile <dir>/mova/control_v0.json --mode apply
+npx mova-claude-import control check --project <dir> --profile <dir>/mova/control_v0.json
+```
+
 ### У меня уже есть папка Claude Code‑проекта
 
 ```
@@ -83,6 +92,7 @@ npm run demo
 Примеры: `examples/control_profile_min.json`, `examples/control_profile_standard.json`, `examples/control_profile_strict.json`.
 
 Единый контрольный файл для rebuild/import: `mova/control_v0.json`.
+Schema: `schemas/mova.control_v0.schema.json`.
 
 Канон схем control‑слоя: `schemas/claude_control/v0/{ds,env,global}`.
 

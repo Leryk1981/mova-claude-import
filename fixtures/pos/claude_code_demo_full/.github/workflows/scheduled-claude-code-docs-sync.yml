@@ -1,0 +1,14 @@
+name: scheduled-claude-code-docs-sync
+
+on:
+  schedule:
+    - cron: "0 4 * * 2"
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Sync docs
+        run: echo "Docs sync placeholder"
