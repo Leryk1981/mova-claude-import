@@ -23,6 +23,7 @@ import {
   normalizeControlV0,
   type ControlV0,
 } from "./control_v0.js";
+import { getMovaObserveScriptV0 } from "./observability_writer_v0.js";
 
 type Found = {
   claudeMdPath?: string;
@@ -456,6 +457,11 @@ export async function runImport(opts: ImportOptions): Promise<ImportResult> {
     await writeJsonFile(path.join(outRoot, ".mcp.json"), mcpJsonParsed);
     await writeJsonFile(path.join(outRoot, ".claude", "settings.json"), controlToSettingsV0(control));
     await writeJsonFile(path.join(outRoot, controlRel), control);
+    if (control.observability.enable && control.observability.writer?.script_path) {
+      const scriptPath = path.join(outRoot, control.observability.writer.script_path);
+      await fs.mkdir(path.dirname(scriptPath), { recursive: true });
+      await fs.writeFile(scriptPath, getMovaObserveScriptV0(), "utf8");
+    }
     for (const skill of normalizedSkills) {
       const outRel = path.join(".claude", "skills", skill.normDir, "SKILL.md");
       await writeTextFile(path.join(outRoot, outRel), skill.body);

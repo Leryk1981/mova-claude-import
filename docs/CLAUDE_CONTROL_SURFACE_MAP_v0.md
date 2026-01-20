@@ -45,11 +45,13 @@
 | `assets.dotfiles` | `.claude/.gitignore` |
 | `assets.schemas` | `.claude/hooks/*.schema.json` |
 | `assets.workflows` | `.github/workflows/**` |
+| `observability.*` | hooks в `.claude/settings.json` + артефакты в `.mova/episodes/**` |
 
 ## Что реально блокирует, а что наблюдает
 
 - Блокировка: `hooks.PreToolUse` с явным `block: true` и exit 2.
 - Наблюдение: `PostToolUse`, `UserPromptSubmit`, `Stop` — без hard-stop, по умолчанию `report_only`.
+- Наблюдаемость MOVA пишет события в `.mova/episodes/**` и не блокирует работу.
 
 ## Managed vs unmanaged LSP
 
