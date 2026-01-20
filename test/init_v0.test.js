@@ -26,12 +26,21 @@ test("init v0 creates profile scaffold and optional zip", async () => {
   await assertExists(path.join(out, "CLAUDE.md"));
   await assertExists(path.join(out, ".claude", "settings.json"));
   await assertExists(path.join(out, ".claude", "skills", "mova-layer-v0", "SKILL.md"));
+  await assertExists(path.join(out, "mova", "control_v0.json"));
 
   const initManifestPath = path.join(out, "mova", "claude_import", "v0", "init_manifest_v0.json");
   const initManifest = JSON.parse(await fs.readFile(initManifestPath, "utf8"));
   assert.equal(initManifest.profile_version, "v0");
   assert.ok(initManifest.zip_sha256);
   assert.ok(initManifest.zip_rel_path);
+
+  const controlPath = path.join(out, "mova", "control_v0.json");
+  const control = JSON.parse(await fs.readFile(controlPath, "utf8"));
+  assert.equal(control.version, "control_v0");
+  assert.equal(control.policy.mode, "report_only");
+  assert.equal(control.policy.hooks.on_invalid_hook, "report_only");
+  assert.equal(control.policy.permissions.on_unknown, "report_only");
+  assert.equal(control.policy.plugins.on_unknown, "report_only");
 
   await assertExists(path.join(out, initManifest.zip_rel_path));
 });

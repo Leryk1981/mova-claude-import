@@ -4,6 +4,7 @@ import { getAnthropicProfileV0Files } from "./anthropic_profile_v0.js";
 import { stableStringify } from "./stable_json.js";
 import { createExportZipV0 } from "./export_zip_v0.js";
 import { writeCleanClaudeProfileScaffoldV0 } from "./claude_profile_scaffold_v0.js";
+import { defaultControlV0 } from "./control_v0.js";
 
 type InitResult = {
   createdFiles: string[];
@@ -30,6 +31,10 @@ export async function initProfileV0(outRoot: string, emitZip: boolean): Promise<
     await writeTextFile(path.join(outRoot, rel), content);
     createdFiles.push(rel);
   }
+
+  const controlRel = path.join("mova", "control_v0.json").replace(/\\/g, "/");
+  await writeJsonFile(path.join(outRoot, controlRel), defaultControlV0());
+  createdFiles.push(controlRel);
 
   const movaBase = path.join(outRoot, "mova", "claude_import", "v0");
   const initManifestRel = path.join("mova", "claude_import", "v0", "init_manifest_v0.json").replace(/\\/g, "/");

@@ -7,6 +7,7 @@ export const anthropicProfileV0RequiredFiles = [
   ".claude/commands/mova_context.md",
   ".claude/commands/mova_lint.md",
   ".claude/skills/mova-layer-v0/SKILL.md",
+  "mova/control_v0.json",
 ] as const;
 
 export function getAnthropicProfileV0Files(): Record<string, string> {

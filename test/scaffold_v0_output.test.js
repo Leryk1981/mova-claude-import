@@ -31,6 +31,7 @@ test("init creates full scaffold surfaces", async () => {
   await assertExists(path.join(out, ".claude", "output-styles", "example_style.md"));
   await assertExists(path.join(out, ".claude", "hooks", "example_hook.sh"));
   await assertExists(path.join(out, ".mcp.json"));
+  await assertExists(path.join(out, "mova", "control_v0.json"));
 });
 
 test("control apply creates missing surfaces without erasing content", async () => {
