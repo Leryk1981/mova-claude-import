@@ -21,33 +21,17 @@ async function writeFile(absPath: string, content: string) {
 
 function scaffoldFiles(): ScaffoldFile[] {
   const settings = {
-    profile_version: "v0",
+    includeCoAuthoredBy: true,
     permissions: {
       allow: [],
       deny: [],
-      behavior: {
-        on_conflict: "deny_wins",
-        on_unknown: "report_only",
-      },
-    },
-    plugins: {
-      enable: true,
-      allowed_plugin_ids: [],
-      denied_plugin_ids: [],
-      behavior: {
-        on_unknown: "report_only",
-      },
+      defaultMode: "ask",
     },
     hooks: {
-      enable: true,
-      definitions: [],
-      behavior: {
-        on_invalid_hook: "report_only",
-      },
-    },
-    claude_md: {
-      inject_control_entry: true,
-      marker: MOVA_CONTROL_ENTRY_MARKER,
+      PreToolUse: [],
+      PostToolUse: [],
+      UserPromptSubmit: [],
+      Stop: [],
     },
   };
 
@@ -90,7 +74,7 @@ function scaffoldFiles(): ScaffoldFile[] {
     },
     {
       rel: ".mcp.json",
-      content: stableStringify({ servers: [] }) + "\n",
+      content: stableStringify({ mcpServers: {} }) + "\n",
     },
     {
       rel: "MOVA.md",

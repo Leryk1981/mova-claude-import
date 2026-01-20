@@ -15,7 +15,7 @@ test("control apply writes marker and report", async () => {
   await fs.rm(tmp, { recursive: true, force: true });
   await fs.mkdir(proj, { recursive: true });
   await fs.writeFile(path.join(proj, "CLAUDE.md"), "Hello\n", "utf8");
-  await fs.writeFile(path.join(proj, ".mcp.json"), "{\"servers\":[]}", "utf8");
+  await fs.writeFile(path.join(proj, ".mcp.json"), "{\"mcpServers\":{}}", "utf8");
 
   await execFileP("node", [
     "dist/cli.js",
@@ -38,3 +38,4 @@ test("control apply writes marker and report", async () => {
   const entries = await fs.readdir(runsDir);
   assert.ok(entries.length > 0);
 });
+

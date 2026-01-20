@@ -1,30 +1,104 @@
 {
-  "claude_md": {
-    "inject_control_entry": true,
-    "marker": "<!-- MOVA_CONTROL_ENTRY_V0 -->"
-  },
+  "includeCoAuthoredBy": true,
   "hooks": {
-    "behavior": {
-      "on_invalid_hook": "report_only"
-    },
-    "definitions": [],
-    "enable": true
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ \"$(git branch --show-current)\" != \"main\" ] || { echo '{\"block\": true, \"message\": \"Cannot edit files on main branch. Create a feature branch first.\"}' >&2; exit 2; }",
+            "timeout": 5
+          }
+        ],
+        "matcher": "Edit|MultiEdit|Write"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -E -i \"(rm\\\\s+-rf|sudo|curl\\\\s+[^|]+\\\\|\\\\s*sh|wget\\\\s+[^|]+\\\\|\\\\s*sh|mkfs\\\\.|dd\\\\s+if=|chmod\\\\s+777|chown\\\\s+root|\\\\.env|id_rsa|\\\\.pem)\"; then\n  echo '{\"block\": true, \"message\": \"Potentially dangerous command blocked.\"}' >&2\n  exit 2\nfi",
+            "timeout": 5
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" =~ \\\\.(js|jsx|ts|tsx)$ ]]; then\n  npx prettier --write \"$CLAUDE_TOOL_INPUT_FILE_PATH\" 2>&1\n  exit_code=$?\n  if [ $exit_code -ne 0 ]; then\n    echo '{\"feedback\": \"Formatting failed.\"}' >&2\n    exit 1\n  fi\n  echo '{\"feedback\": \"Formatting applied.\", \"suppressOutput\": true}'\nfi",
+            "timeout": 30
+          }
+        ],
+        "matcher": "Edit|MultiEdit|Write"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" =~ \\\\.test\\\\.(js|jsx|ts|tsx)$ ]]; then\n  npm test -- --findRelatedTests \"$CLAUDE_TOOL_INPUT_FILE_PATH\" --passWithNoTests 2>&1 | tail -30\n  exit 0\nfi",
+            "timeout": 90
+          }
+        ],
+        "matcher": "Edit|MultiEdit|Write"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/mova-observe.js\" --event PostToolUse --stdout-tail-bytes 4000 --stderr-tail-bytes 4000 --max-event-bytes 20000 --tail-lines 50 --output-dir .mova/episodes",
+            "timeout": 5
+          }
+        ],
+        "matcher": "Bash|Read|Edit|MultiEdit|Write"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/skill-eval.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/mova-observe.js\" --event UserPromptSubmit --stdout-tail-bytes 4000 --stderr-tail-bytes 4000 --max-event-bytes 20000 --tail-lines 50 --output-dir .mova/episodes",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/mova-observe.js\" --event Stop --stdout-tail-bytes 4000 --stderr-tail-bytes 4000 --max-event-bytes 20000 --tail-lines 50 --output-dir .mova/episodes",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
   },
   "permissions": {
-    "allow": [],
-    "behavior": {
-      "on_conflict": "deny_wins",
-      "on_unknown": "report_only"
-    },
-    "deny": []
+    "allow": [
+      "Bash",
+      "Edit",
+      "Read"
+    ],
+    "defaultMode": "ask"
   },
-  "plugins": {
-    "allowed_plugin_ids": [],
-    "behavior": {
-      "on_unknown": "report_only"
-    },
-    "denied_plugin_ids": [],
-    "enable": true
-  },
-  "profile_version": "v0"
+  "mcp": {
+    "enableAllProjectMcpServers": false,
+    "enabledMcpjsonServers": [
+      "context7"
+    ]
+  }
 }

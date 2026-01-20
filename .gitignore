@@ -37,6 +37,7 @@ coverage/
 .tmp_demo/
 .tmp_*/
 .tmp_tree_*/
+# npm package test outputs
 pkg_test_*/
 tmp/
 pids/

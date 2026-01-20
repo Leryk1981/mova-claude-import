@@ -72,6 +72,39 @@ function mergeSettingsOverlay(existing: any, incoming: any) {
   return mergeOverlayValue(existing ?? {}, incoming ?? {});
 }
 
+function isObject(value: any): value is Record<string, any> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function mergeMcpOverlay(existing: any, incoming: any) {
+  if (isObject(incoming?.mcpServers)) {
+    const existingServers = isObject(existing?.mcpServers)
+      ? existing.mcpServers
+      : isObject(existing?.servers)
+        ? existing.servers
+        : {};
+    const merged = {
+      ...existing,
+      mcpServers: { ...incoming.mcpServers, ...existingServers },
+    };
+    if ("servers" in merged) delete merged.servers;
+    return merged;
+  }
+  if (Array.isArray(incoming?.servers)) {
+    const existingServers = Array.isArray(existing?.servers) ? existing.servers : [];
+    const merged: any[] = incoming.servers.slice();
+    const seen = new Set(merged.map((entry) => stableStringify(entry)));
+    for (const entry of existingServers) {
+      const key = stableStringify(entry);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(entry);
+    }
+    return { ...existing, servers: merged };
+  }
+  return { ...existing, ...incoming };
+}
+
 function updateClaude(content: string, marker: string, block: string): string {
   if (content.includes(marker)) {
     const idx = content.indexOf(marker);
@@ -158,7 +191,12 @@ export async function controlApplyV0(
       }
       applied.settings = true;
 
-      if (!(isOverlay && (await exists(mcpPath)))) {
+      if (isOverlay && (await exists(mcpPath))) {
+        const current = await readJson(mcpPath);
+        const merged = mergeMcpOverlay(current, controlToMcpJson(control));
+        await writeJson(path.join(projectDir, ".mcp.json"), merged);
+        applied.mcp_json = true;
+      } else {
         await writeJson(path.join(projectDir, ".mcp.json"), controlToMcpJson(control));
         applied.mcp_json = true;
       }

@@ -23,7 +23,7 @@ test("overlay v0 files are emitted and CLAUDE entry exists", async () => {
   await fs.mkdir(path.join(proj, ".claude", "skills"), { recursive: true });
 
   await fs.writeFile(path.join(proj, "CLAUDE.md"), "Hello\n", "utf8");
-  await fs.writeFile(path.join(proj, ".mcp.json"), "{\"servers\":[]}", "utf8");
+  await fs.writeFile(path.join(proj, ".mcp.json"), "{\"mcpServers\":{}}", "utf8");
   await fs.writeFile(path.join(proj, ".claude", "skills", "a.md"), "# skill\n", "utf8");
 
   await execFileP("node", ["dist/cli.js", "--project", proj, "--out", out]);
@@ -36,3 +36,4 @@ test("overlay v0 files are emitted and CLAUDE entry exists", async () => {
   const claude = await fs.readFile(claudePath, "utf8");
   assert.ok(claude.includes("MOVA_CONTROL_ENTRY_V0"));
 });
+

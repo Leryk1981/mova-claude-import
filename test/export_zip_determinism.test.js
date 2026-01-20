@@ -22,7 +22,7 @@ test("zip export is deterministic across runs", async () => {
   await fs.mkdir(path.join(proj, ".claude", "skills"), { recursive: true });
 
   await fs.writeFile(path.join(proj, "CLAUDE.md"), "Hello\n", "utf8");
-  await fs.writeFile(path.join(proj, ".mcp.json"), "{\"servers\":[]}", "utf8");
+  await fs.writeFile(path.join(proj, ".mcp.json"), "{\"mcpServers\":{}}", "utf8");
   await fs.writeFile(path.join(proj, ".claude", "skills", "a.md"), "# skill\n", "utf8");
 
   await execFileP("node", ["dist/cli.js", "--project", proj, "--out", out1, "--zip"]);
@@ -39,3 +39,4 @@ test("zip export is deterministic across runs", async () => {
   assert.ok(manifest1.files.includes("CLAUDE.md"));
   assert.ok(manifest1.files.includes(".claude/settings.json"));
 });
+
