@@ -29,6 +29,7 @@ export type ControlV0 = {
     include_co_authored_by: boolean;
     env: Record<string, string>;
   };
+  environs: Record<string, string>;
   mcp: {
     servers: any;
     enable_all_project_mcp_servers: boolean;
@@ -101,6 +102,20 @@ export type ControlV0 = {
     docs: AssetItem[];
     dotfiles: AssetItem[];
     schemas: AssetItem[];
+    presets: AssetItem[];
+    services: AssetItem[];
+  };
+  monitoring: {
+    enabled: boolean | string;
+    port: number | string;
+    metrics: string[];
+    update_interval: number;
+  };
+  versioning: {
+    enabled: boolean | string;
+    backup_on_change: boolean;
+    auto_update_check: boolean;
+    rollback_levels: number;
   };
 };
 
@@ -127,6 +142,14 @@ export function defaultControlV0(): ControlV0 {
     settings: {
       include_co_authored_by: true,
       env: {},
+    },
+    environs: {
+      AUTO_MODE: "${AUTO_MODE:false}",
+      DEBUG_LEVEL: "${DEBUG_LEVEL:minimal}",
+      MASK_SENSITIVE: "${MASK_SENSITIVE:true}",
+      DASHBOARD_ENABLED: "${DASHBOARD_ENABLED:false}",
+      DASHBOARD_PORT: "${DASHBOARD_PORT:2773}",
+      HOT_RELOAD_ENABLED: "${HOT_RELOAD_ENABLED:false}",
     },
     mcp: {
       servers: {},
@@ -200,6 +223,20 @@ export function defaultControlV0(): ControlV0 {
       docs: [],
       dotfiles: [],
       schemas: [],
+      presets: [],
+      services: [],
+    },
+    monitoring: {
+      enabled: "${DASHBOARD_ENABLED:false}",
+      port: "${DASHBOARD_PORT:2773}",
+      metrics: ["episodes_count", "error_rate", "performance"],
+      update_interval: 30000,
+    },
+    versioning: {
+      enabled: "${HOT_RELOAD_ENABLED:false}",
+      backup_on_change: true,
+      auto_update_check: false,
+      rollback_levels: 5,
     },
   };
 }
@@ -212,6 +249,28 @@ function coerceBoolean(value: any, fallback: boolean, defaults: string[], path: 
 
 function coerceString(value: any, fallback: string, defaults: string[], path: string): string {
   if (typeof value === "string") return value;
+  defaults.push(path);
+  return fallback;
+}
+
+function coerceBooleanOrString(
+  value: any,
+  fallback: string | boolean,
+  defaults: string[],
+  path: string
+): string | boolean {
+  if (typeof value === "string" || typeof value === "boolean") return value;
+  defaults.push(path);
+  return fallback;
+}
+
+function coerceNumberOrString(
+  value: any,
+  fallback: string | number,
+  defaults: string[],
+  path: string
+): string | number {
+  if ((typeof value === "number" && Number.isFinite(value)) || typeof value === "string") return value;
   defaults.push(path);
   return fallback;
 }
@@ -311,6 +370,7 @@ export function normalizeControlV0(input: any): { control: ControlV0; defaults: 
     "settings.include_co_authored_by"
   );
   base.settings.env = coerceRecord(src?.settings?.env, base.settings.env, defaults, "settings.env");
+  base.environs = coerceRecord(src?.environs, base.environs, defaults, "environs");
 
   base.mcp.servers = coerceServers(src?.mcp?.servers, base.mcp.servers, defaults, "mcp.servers");
   base.mcp.enable_all_project_mcp_servers = coerceBoolean(
@@ -560,6 +620,60 @@ export function normalizeControlV0(input: any): { control: ControlV0; defaults: 
   base.assets.docs = normalizeAssets(src?.assets?.docs, base.assets.docs, defaults, "assets.docs");
   base.assets.dotfiles = normalizeAssets(src?.assets?.dotfiles, base.assets.dotfiles, defaults, "assets.dotfiles");
   base.assets.schemas = normalizeAssets(src?.assets?.schemas, base.assets.schemas, defaults, "assets.schemas");
+  base.assets.presets = normalizeAssets(src?.assets?.presets, base.assets.presets, defaults, "assets.presets");
+  base.assets.services = normalizeAssets(src?.assets?.services, base.assets.services, defaults, "assets.services");
+
+  base.monitoring = coerceRecord(src?.monitoring, base.monitoring, defaults, "monitoring") as ControlV0["monitoring"];
+  base.monitoring.enabled = coerceBooleanOrString(
+    src?.monitoring?.enabled,
+    base.monitoring.enabled,
+    defaults,
+    "monitoring.enabled"
+  );
+  base.monitoring.port = coerceNumberOrString(
+    src?.monitoring?.port,
+    base.monitoring.port,
+    defaults,
+    "monitoring.port"
+  );
+  base.monitoring.metrics = coerceArray(
+    src?.monitoring?.metrics,
+    base.monitoring.metrics,
+    defaults,
+    "monitoring.metrics"
+  );
+  base.monitoring.update_interval = coerceNumber(
+    src?.monitoring?.update_interval,
+    base.monitoring.update_interval,
+    defaults,
+    "monitoring.update_interval"
+  );
+
+  base.versioning = coerceRecord(src?.versioning, base.versioning, defaults, "versioning") as ControlV0["versioning"];
+  base.versioning.enabled = coerceBooleanOrString(
+    src?.versioning?.enabled,
+    base.versioning.enabled,
+    defaults,
+    "versioning.enabled"
+  );
+  base.versioning.backup_on_change = coerceBoolean(
+    src?.versioning?.backup_on_change,
+    base.versioning.backup_on_change,
+    defaults,
+    "versioning.backup_on_change"
+  );
+  base.versioning.auto_update_check = coerceBoolean(
+    src?.versioning?.auto_update_check,
+    base.versioning.auto_update_check,
+    defaults,
+    "versioning.auto_update_check"
+  );
+  base.versioning.rollback_levels = coerceNumber(
+    src?.versioning?.rollback_levels,
+    base.versioning.rollback_levels,
+    defaults,
+    "versioning.rollback_levels"
+  );
 
   return { control: base, defaults };
 }

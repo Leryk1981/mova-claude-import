@@ -69,6 +69,15 @@ npx -y mova-claude-import@latest preset list
 npx -y mova-claude-import@latest control apply --preset safe_observable_v0 --project . --mode overlay
 ```
 
+### Unification services (opt-in)
+
+```
+node services/env_resolver.js resolve mova/control_v0.json
+node services/preset_manager.js list
+DASHBOARD_ENABLED=true node services/dashboard_server.js start
+HOT_RELOAD_ENABLED=true node services/hot_reloader.js backup my-backup
+```
+
 Дальше используйте единый контрольный файл и выполните rebuild/import:
 
 ```

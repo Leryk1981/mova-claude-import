@@ -36,6 +36,15 @@ Claude Code запускает hook‑команды из корня проек�
 На Windows `$CLAUDE_PROJECT_DIR` не разворачивается в cmd‑строках, поэтому не используйте его в `command` без явного `cmd /c` и `%CLAUDE_PROJECT_DIR%`.
 Для кроссплатформенности используйте Node‑скрипты (`node .claude/hooks/*.js`) вместо bash.
 
+## Unification services (env/presets/monitoring/versioning)
+
+Все расширения включаются через переменные окружения и не ломают текущий поток.
+
+- Env resolver: `node services/env_resolver.js resolve mova/control_v0.json`
+- Presets: `node services/preset_manager.js list` / `apply development`
+- Dashboard: `DASHBOARD_ENABLED=true node services/dashboard_server.js start`
+- Hot reload: `HOT_RELOAD_ENABLED=true node services/hot_reloader.js backup my-backup`
+
 ## Команды CLI
 
 | Команда | Назначение |

@@ -1,0 +1,25 @@
+{
+  "$inherit": "base",
+  "description": "Locked-down production configuration",
+  "policy": {
+    "permissions": {
+      "allow": [
+        "Read",
+        "Run"
+      ],
+      "deny": [
+        "Bash.*rm",
+        "Edit.*secret"
+      ],
+      "on_conflict": "deny_wins",
+      "on_unknown": "deny"
+    }
+  },
+  "environs": {
+    "DEBUG_LEVEL": "${DEBUG_LEVEL:minimal}",
+    "MASK_SENSITIVE": "${MASK_SENSITIVE:true}",
+    "DASHBOARD_ENABLED": "${DASHBOARD_ENABLED:true}",
+    "HOT_RELOAD_ENABLED": "${HOT_RELOAD_ENABLED:false}",
+    "AUTO_MODE": "${AUTO_MODE:false}"
+  }
+}

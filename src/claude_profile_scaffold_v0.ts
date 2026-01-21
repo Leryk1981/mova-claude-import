@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { stableStringify } from "./stable_json.js";
 import { MOVA_CONTROL_ENTRY_MARKER } from "./mova_overlay_v0.js";
 
@@ -19,7 +20,18 @@ async function writeFile(absPath: string, content: string) {
   await fs.writeFile(absPath, content, "utf8");
 }
 
-function scaffoldFiles(): ScaffoldFile[] {
+async function loadPackageFile(rel: string): Promise<string | null> {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const pkgRoot = path.resolve(here, "..");
+  const abs = path.join(pkgRoot, rel);
+  try {
+    return await fs.readFile(abs, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+async function scaffoldFiles(): Promise<ScaffoldFile[]> {
   const settings = {
     includeCoAuthoredBy: true,
     permissions: {
@@ -35,7 +47,7 @@ function scaffoldFiles(): ScaffoldFile[] {
     },
   };
 
-  return [
+  const files: ScaffoldFile[] = [
     {
       rel: "CLAUDE.md",
       content: [
@@ -69,10 +81,6 @@ function scaffoldFiles(): ScaffoldFile[] {
       content: ["# example_style", "", "Style: concise, bullet-first.", ""].join("\n"),
     },
     {
-      rel: ".claude/hooks/example_hook.js",
-      content: ["#!/usr/bin/env node", "process.stdout.write(\"hook: dry check\");"].join("\n") + "\n",
-    },
-    {
       rel: ".mcp.json",
       content: stableStringify({ mcpServers: {} }) + "\n",
     },
@@ -81,17 +89,56 @@ function scaffoldFiles(): ScaffoldFile[] {
       content: ["# MOVA", "", "Notes and operator instructions.", ""].join("\n"),
     },
   ];
+
+  const serviceFiles = [
+    "services/env_resolver.js",
+    "services/preset_manager.js",
+    "services/episode_metrics_collector.js",
+    "services/dashboard_server.js",
+    "services/hot_reloader.js",
+  ];
+  for (const rel of serviceFiles) {
+    const content = await loadPackageFile(rel);
+    if (content) files.push({ rel, content });
+  }
+
+  const presetFiles = [
+    ".claude/presets/base.preset_v0.json",
+    ".claude/presets/development.preset_v0.json",
+    ".claude/presets/production.preset_v0.json",
+  ];
+  for (const rel of presetFiles) {
+    const content = await loadPackageFile(rel);
+    if (content) files.push({ rel, content });
+  }
+
+  const hookFiles = [
+    ".claude/hooks/example_hook.js",
+    ".claude/hooks/mova-guard.js",
+    ".claude/hooks/mova-observe.js",
+    ".claude/hooks/skill-eval.js",
+    ".claude/hooks/skill-rules.json",
+  ];
+  for (const rel of hookFiles) {
+    const content = await loadPackageFile(rel);
+    if (content) files.push({ rel, content });
+  }
+
+  const manifestContent = await loadPackageFile("mova/version_manifest_v0.json");
+  if (manifestContent) files.push({ rel: "mova/version_manifest_v0.json", content: manifestContent });
+
+  return files;
 }
 
 export async function writeCleanClaudeProfileScaffoldV0(outDir: string) {
-  const files = scaffoldFiles();
+  const files = await scaffoldFiles();
   for (const f of files) {
     await writeFile(path.join(outDir, f.rel), f.content);
   }
 }
 
 export async function ensureClaudeControlSurfacesV0(projectDir: string) {
-  const files = scaffoldFiles();
+  const files = await scaffoldFiles();
   for (const f of files) {
     const abs = path.join(projectDir, f.rel);
     if (!(await exists(abs))) {

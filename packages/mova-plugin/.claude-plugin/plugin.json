@@ -1,0 +1,15 @@
+{
+  "name": "mova",
+  "version": "0.2.0",
+  "description": "MOVA - Monitoring, Observing, Validating Agent layer for Claude Code",
+  "author": {
+    "name": "MOVA Team"
+  },
+  "repository": "https://github.com/mova/claude-plugin",
+  "license": "MIT",
+  "engines": {
+    "claude-code": ">=1.0.0",
+    "node": ">=18.0.0"
+  },
+  "keywords": ["monitoring", "observability", "validation", "guard", "hooks", "security"]
+}

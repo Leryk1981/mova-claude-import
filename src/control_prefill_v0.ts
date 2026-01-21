@@ -89,6 +89,8 @@ export async function controlPrefillV0(projectDir: string, outDir: string): Prom
     { key: "commands", root: path.join(projectDir, ".claude", "commands"), prefix: ".claude/commands" },
     { key: "rules", root: path.join(projectDir, ".claude", "rules"), prefix: ".claude/rules" },
     { key: "hooks", root: path.join(projectDir, ".claude", "hooks"), prefix: ".claude/hooks" },
+    { key: "presets", root: path.join(projectDir, ".claude", "presets"), prefix: ".claude/presets" },
+    { key: "services", root: path.join(projectDir, "services"), prefix: "services" },
   ] as const;
 
   const assetMap: Record<string, Array<{ path: string; mode: "copy_through"; source_path: string }>> = {
@@ -96,6 +98,8 @@ export async function controlPrefillV0(projectDir: string, outDir: string): Prom
     commands: [],
     rules: [],
     hooks: [],
+    presets: [],
+    services: [],
     workflows: [],
     docs: [],
     dotfiles: [],
@@ -154,6 +158,8 @@ export async function controlPrefillV0(projectDir: string, outDir: string): Prom
   control.assets.commands = assetMap.commands.sort((a, b) => a.path.localeCompare(b.path));
   control.assets.rules = assetMap.rules.sort((a, b) => a.path.localeCompare(b.path));
   control.assets.hooks = assetMap.hooks.sort((a, b) => a.path.localeCompare(b.path));
+  control.assets.presets = assetMap.presets.sort((a, b) => a.path.localeCompare(b.path));
+  control.assets.services = assetMap.services.sort((a, b) => a.path.localeCompare(b.path));
   control.assets.workflows = assetMap.workflows.sort((a, b) => a.path.localeCompare(b.path));
   control.assets.docs = assetMap.docs.sort((a, b) => a.path.localeCompare(b.path));
   control.assets.dotfiles = assetMap.dotfiles.sort((a, b) => a.path.localeCompare(b.path));

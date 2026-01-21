@@ -1,0 +1,152 @@
+#!/usr/bin/env node
+import fs from "node:fs/promises";
+import path from "node:path";
+import crypto from "node:crypto";
+const KEY_RE = /(api[_-]?key|token|secret|password|authorization|bearer)/i;
+const INLINE_SECRET_RE = /(sk-[a-zA-Z0-9]{8,})/g;
+const PLACEHOLDER_RE = /^\$\{[A-Z0-9_]+(?::-?[^}]+)?\}$/;
+const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const args = process.argv.slice(2);
+const readArg = (name) => {
+  const idx = args.indexOf(name);
+  if (idx === -1) return undefined;
+  return args[idx + 1];
+};
+const eventType = readArg("--event") || process.env.CLAUDE_HOOK_EVENT || "post_tool_use";
+const stdoutTailBytes = Number(readArg("--stdout-tail-bytes") || process.env.MOVA_OBS_STDOUT_TAIL_BYTES || 4000);
+const stderrTailBytes = Number(readArg("--stderr-tail-bytes") || process.env.MOVA_OBS_STDERR_TAIL_BYTES || 4000);
+const maxEventBytes = Number(readArg("--max-event-bytes") || process.env.MOVA_OBS_MAX_EVENT_BYTES || 20000);
+const tailLines = Number(readArg("--tail-lines") || process.env.MOVA_OBS_TAIL_LINES || 50);
+const outputDir = readArg("--output-dir") || process.env.MOVA_OBS_OUTPUT_DIR || ".mova/episodes";
+const now = new Date();
+const iso = now.toISOString();
+const env = process.env;
+const sessionId = env.CLAUDE_SESSION_ID || env.CLAUDE_RUN_ID;
+async function ensureRunId(root) {
+  if (sessionId) return sessionId;
+  const currentPath = path.join(root, ".current_run_id");
+  try {
+    const raw = await fs.readFile(currentPath, "utf8");
+    if (raw.trim()) return raw.trim();
+  } catch {}
+  const runId = `run_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+  await fs.mkdir(root, { recursive: true });
+  await fs.writeFile(currentPath, runId, "utf8");
+  return runId;
+}
+function tailLinesFn(text, maxLines) {
+  const lines = text.split(/\r?\n/);
+  if (lines.length <= maxLines) return text;
+  return lines.slice(-maxLines).join("\n");
+}
+function tailBytesFn(text, maxBytes) {
+  if (!maxBytes || maxBytes <= 0) return "";
+  const buf = Buffer.from(text, "utf8");
+  if (buf.length <= maxBytes) return text;
+  return buf.slice(buf.length - maxBytes).toString("utf8");
+}
+function trimText(text, maxBytes, maxLines) {
+  return tailBytesFn(tailLinesFn(text, maxLines), maxBytes);
+}
+function redactText(input) {
+  let out = input;
+  out = out.replace(INLINE_SECRET_RE, () => "[REDACTED_TOKEN]");
+  out = out.replace(/^([A-Z0-9_]{3,80})\s*=\s*(.+)$/gmi, (line, k, v) => {
+    if (!KEY_RE.test(k)) return line;
+    if (PLACEHOLDER_RE.test(String(v).trim())) return line;
+    return `${k}=[REDACTED_VALUE_LEN_${String(v).length}]`;
+  });
+  return out;
+}
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (value && typeof value === "object") {
+    const keys = Object.keys(value).sort();
+    const parts = keys.map((k) => `${JSON.stringify(k)}:${stableStringify(value[k])}`);
+    return `{${parts.join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+function sha(text) {
+  return crypto.createHash("sha256").update(text, "utf8").digest("hex");
+}
+async function run() {
+  const root = path.join(projectDir, outputDir);
+  const runId = await ensureRunId(root);
+  const runDir = path.join(root, runId);
+  await fs.mkdir(runDir, { recursive: true });
+  const event = {
+    ts: iso,
+    event_type: String(eventType),
+    tool_name: env.CLAUDE_TOOL_NAME || null,
+    ok: env.CLAUDE_TOOL_STATUS ? env.CLAUDE_TOOL_STATUS === "0" : null,
+    durations: env.CLAUDE_TOOL_DURATION_MS ? { tool_ms: Number(env.CLAUDE_TOOL_DURATION_MS) } : null,
+    paths: {
+      input: env.CLAUDE_TOOL_INPUT_FILE_PATH || null,
+      output: env.CLAUDE_TOOL_OUTPUT_FILE_PATH || null
+    },
+    stdout_tail: null,
+    stderr_tail: null,
+    mcp: { server_name: env.CLAUDE_MCP_SERVER || null },
+    hashes: { input_hash: null, output_hash: null }
+  };
+  const stdoutRaw = env.CLAUDE_TOOL_STDOUT || env.CLAUDE_TOOL_OUTPUT || "";
+  const stderrRaw = env.CLAUDE_TOOL_STDERR || "";
+  let outputHashPayload = "";
+  if (stdoutRaw) {
+    const trimmed = trimText(stdoutRaw, stdoutTailBytes, tailLines);
+    const redacted = redactText(trimmed);
+    event.stdout_tail = redacted;
+    outputHashPayload += redacted;
+  }
+  if (stderrRaw) {
+    const trimmed = trimText(stderrRaw, stderrTailBytes, tailLines);
+    const redacted = redactText(trimmed);
+    event.stderr_tail = redacted;
+    outputHashPayload += `\n${redacted}`;
+  }
+  if (outputHashPayload) {
+    event.hashes.output_hash = sha(outputHashPayload);
+  }
+  const inputRaw = env.CLAUDE_TOOL_INPUT || "";
+  if (inputRaw) {
+    const trimmed = trimText(inputRaw, stdoutTailBytes, tailLines);
+    const redacted = redactText(trimmed);
+    event.hashes.input_hash = sha(redacted);
+  }
+  let line = stableStringify(event);
+  if (line.length > maxEventBytes) {
+    event.stdout_tail = null;
+    event.stderr_tail = null;
+    line = stableStringify(event);
+  }
+  await fs.appendFile(path.join(runDir, "events.jsonl"), line + "\n", "utf8");
+  const summaryPath = path.join(runDir, "summary.json");
+  let summary = {
+    run_id: runId,
+    started_at: iso,
+    last_event_at: iso,
+    counts: {},
+    tools: {}
+  };
+  try {
+    const raw = await fs.readFile(summaryPath, "utf8");
+    summary = JSON.parse(raw);
+  } catch {}
+  summary.last_event_at = iso;
+  summary.counts[event.event_type] = (summary.counts[event.event_type] || 0) + 1;
+  if (event.tool_name) {
+    summary.tools[event.tool_name] = (summary.tools[event.tool_name] || 0) + 1;
+  }
+  await fs.writeFile(summaryPath, stableStringify(summary) + "\n", "utf8");
+  await fs.appendFile(path.join(root, "index.jsonl"), stableStringify({ ts: iso, run_id: runId, event_type: event.event_type }) + "\n", "utf8");
+  if (String(event.event_type).toLowerCase() === "stop") {
+    const currentPath = path.join(root, ".current_run_id");
+    try { await fs.rm(currentPath); } catch {}
+  }
+}
+run().catch((err) => {
+  const msg = String(err?.message || err || "failed");
+  process.stdout.write(JSON.stringify({ feedback: `MOVA observe: ${msg}`, suppressOutput: true }));
+  process.exit(0);
+});

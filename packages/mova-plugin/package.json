@@ -1,0 +1,42 @@
+{
+  "name": "@mova/claude-plugin",
+  "version": "0.2.0",
+  "description": "MOVA - Monitoring, Observing, Validating Agent plugin for Claude Code",
+  "main": "index.js",
+  "bin": {
+    "mova-guard": "./scripts/mova-guard.js",
+    "mova-observe": "./scripts/mova-observe.js",
+    "mova-security": "./scripts/mova-security.js",
+    "mova-dashboard": "./services/dashboard_server.js"
+  },
+  "files": [
+    ".claude-plugin/",
+    "commands/",
+    "agents/",
+    "skills/",
+    "hooks/",
+    "scripts/",
+    "services/",
+    "presets/",
+    "rules/",
+    "config/",
+    "schemas/"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "claude-code-plugin",
+    "mova",
+    "monitoring",
+    "observability",
+    "validation",
+    "security"
+  ],
+  "author": "MOVA Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mova/claude-plugin"
+  }
+}

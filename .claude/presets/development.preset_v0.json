@@ -1,0 +1,20 @@
+{
+  "$inherit": "base",
+  "description": "Full development access with debugging",
+  "environs": {
+    "DEBUG_LEVEL": "verbose",
+    "DASHBOARD_ENABLED": true
+  },
+  "policy": {
+    "permissions": {
+      "allow": [
+        "Bash",
+        "Read",
+        "Edit",
+        "Write",
+        "Run",
+        "*"
+      ]
+    }
+  }
+}
