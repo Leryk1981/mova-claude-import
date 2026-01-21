@@ -3,6 +3,7 @@
   "version": "0.2.0",
   "description": "MOVA - Monitoring, Observing, Validating Agent plugin for Claude Code",
   "main": "index.js",
+  "types": "index.d.ts",
   "bin": {
     "mova-guard": "./scripts/mova-guard.js",
     "mova-observe": "./scripts/mova-observe.js",
@@ -20,23 +21,46 @@
     "presets/",
     "rules/",
     "config/",
-    "schemas/"
+    "schemas/",
+    "index.js",
+    "index.d.ts",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md",
+    "OPERATOR_GUIDE_v0.md"
   ],
   "engines": {
     "node": ">=18.0.0"
   },
   "keywords": [
+    "claude-code",
     "claude-code-plugin",
     "mova",
     "monitoring",
     "observability",
     "validation",
-    "security"
+    "security",
+    "guardrails",
+    "human-in-the-loop",
+    "audit",
+    "opentelemetry",
+    "otel"
   ],
-  "author": "MOVA Team",
+  "author": {
+    "name": "MOVA Team",
+    "url": "https://github.com/mova"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mova/claude-plugin"
+    "url": "git+https://github.com/Leryk1981/mova-claude-import.git",
+    "directory": "packages/mova-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/Leryk1981/mova-claude-import/issues"
+  },
+  "homepage": "https://github.com/Leryk1981/mova-claude-import/tree/main/packages/mova-plugin#readme",
+  "publishConfig": {
+    "access": "public"
   }
 }
