@@ -211,6 +211,8 @@ export async function controlApplyV0(
         ...control.assets.docs,
         ...control.assets.dotfiles,
         ...control.assets.schemas,
+        ...control.assets.presets,
+        ...control.assets.services,
       ];
       for (const asset of assets) {
         const target = path.join(projectDir, asset.path);

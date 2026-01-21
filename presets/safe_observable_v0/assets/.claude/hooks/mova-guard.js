@@ -1,9 +1,22 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
+import path from "node:path";
 
 const args = new Set(process.argv.slice(2));
 const taskIndex = process.argv.indexOf("--task");
 const task = taskIndex >= 0 ? process.argv[taskIndex + 1] : undefined;
+
+const CONTROL_FILE = path.resolve("mova", "control_v0.json");
+
+async function loadControlConfig() {
+  if (!process.env.MOVA_ENV_RESOLVE) return null;
+  try {
+    const { loadConfigWithEnv } = await import("../../services/env_resolver.js");
+    return await loadConfigWithEnv(CONTROL_FILE, { validateTypes: true, maskSensitive: true });
+  } catch {
+    return null;
+  }
+}
 
 function block(message) {
   process.stderr.write(JSON.stringify({ block: true, message }));
@@ -64,21 +77,31 @@ function postTest() {
   }
 }
 
-switch (task) {
-  case "pre-main":
-    guardMainBranch();
-    break;
-  case "pre-bash":
-    guardDangerousBash();
-    break;
-  case "post-format":
-    postFormat();
-    break;
-  case "post-test":
-    postTest();
-    break;
-  default:
-    if (args.has("--help")) {
-      process.stdout.write("Usage: mova-guard.js --task <pre-main|pre-bash|post-format|post-test>\n");
-    }
+async function main() {
+  switch (task) {
+    case "pre-main":
+      await loadControlConfig();
+      guardMainBranch();
+      break;
+    case "pre-bash":
+      await loadControlConfig();
+      guardDangerousBash();
+      break;
+    case "post-format":
+      await loadControlConfig();
+      postFormat();
+      break;
+    case "post-test":
+      await loadControlConfig();
+      postTest();
+      break;
+    default:
+      if (args.has("--help")) {
+        process.stdout.write("Usage: mova-guard.js --task <pre-main|pre-bash|post-format|post-test>\n");
+      }
+  }
+}
+
+if (process.argv[1]?.endsWith("mova-guard.js")) {
+  main().catch(() => process.exit(1));
 }

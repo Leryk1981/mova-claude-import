@@ -17,7 +17,7 @@ async function loadControlSchema() {
 
 export async function validateControlV0Schema(control: any): Promise<ValidationResult> {
   const schema = await loadControlSchema();
-  const ajv = new (Ajv as any)({ allErrors: true, strict: true, validateSchema: false });
+  const ajv = new (Ajv as any)({ allErrors: true, strict: true, allowUnionTypes: true, validateSchema: false });
   (addFormats as any)(ajv);
   ajv.addSchema(schema, CONTROL_V0_SCHEMA_ID);
   const validate = ajv.compile(schema);

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://mova.dev/schemas/version_manifest_v0.schema.json",
+  "name": "@mova/claude-import",
+  "version": "0.1.5",
+  "integrity": {
+    "algorithm": "sha256",
+    "components": {
+      "services/env_resolver.js": { "hash": "", "size": 0, "last_modified": "", "required": true },
+      "services/preset_manager.js": { "hash": "", "size": 0, "last_modified": "", "required": true },
+      "services/episode_metrics_collector.js": { "hash": "", "size": 0, "last_modified": "", "required": true },
+      "services/dashboard_server.js": { "hash": "", "size": 0, "last_modified": "", "required": true },
+      "services/hot_reloader.js": { "hash": "", "size": 0, "last_modified": "", "required": true },
+      "mova/control_v0.json": { "hash": "", "size": 0, "last_modified": "", "required": true },
+      ".claude/presets/base.preset_v0.json": { "hash": "", "size": 0, "last_modified": "", "required": true },
+      ".claude/presets/development.preset_v0.json": { "hash": "", "size": 0, "last_modified": "", "required": false },
+      ".claude/presets/production.preset_v0.json": { "hash": "", "size": 0, "last_modified": "", "required": false },
+      ".claude/hooks/mova-guard.js": { "hash": "", "size": 0, "last_modified": "", "required": true },
+      ".claude/hooks/mova-observe.js": { "hash": "", "size": 0, "last_modified": "", "required": true }
+    }
+  },
+  "compatibility": {
+    "breaking_changes": [],
+    "supported_versions": {
+      "claude_code_min": "0.1.0",
+      "node_min": "18.0.0"
+    }
+  },
+  "changelog": []
+}

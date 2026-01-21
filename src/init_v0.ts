@@ -39,6 +39,8 @@ async function copyPresetAssets(control: ControlV0, assetsRoot: string, outRoot:
     ...control.assets.docs,
     ...control.assets.dotfiles,
     ...control.assets.schemas,
+    ...control.assets.presets,
+    ...control.assets.services,
   ];
   for (const asset of assets) {
     const sourceRel = asset.source_path ?? asset.path;

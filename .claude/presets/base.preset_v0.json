@@ -1,0 +1,18 @@
+{
+  "description": "Safe minimal configuration for development",
+  "policy": {
+    "permissions": {
+      "allow": [
+        "Bash",
+        "Read",
+        "Edit",
+        "Run"
+      ],
+      "deny": [],
+      "on_conflict": "deny_wins"
+    }
+  },
+  "environs": {
+    "DEBUG_LEVEL": "minimal"
+  }
+}

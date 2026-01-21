@@ -57,6 +57,10 @@
         }
       }
     },
+    "environs": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
     "mcp": {
       "type": "object",
       "required": [
@@ -216,6 +220,31 @@
         "include_events": { "type": "array", "items": { "type": "string" } }
       }
     },
+    "monitoring": {
+      "type": "object",
+      "required": ["enabled", "port", "metrics", "update_interval"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": ["boolean", "string"] },
+        "port": { "type": ["number", "string"] },
+        "metrics": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "update_interval": { "type": "number" }
+      }
+    },
+    "versioning": {
+      "type": "object",
+      "required": ["enabled", "backup_on_change", "auto_update_check", "rollback_levels"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": ["boolean", "string"] },
+        "backup_on_change": { "type": "boolean" },
+        "auto_update_check": { "type": "boolean" },
+        "rollback_levels": { "type": "number" }
+      }
+    },
     "assets": {
       "type": "object",
       "required": ["skills", "agents", "commands", "rules", "hooks", "workflows", "docs", "dotfiles", "schemas"],
@@ -229,7 +258,9 @@
         "workflows": { "$ref": "#/$defs/asset_list" },
         "docs": { "$ref": "#/$defs/asset_list" },
         "dotfiles": { "$ref": "#/$defs/asset_list" },
-        "schemas": { "$ref": "#/$defs/asset_list" }
+        "schemas": { "$ref": "#/$defs/asset_list" },
+        "presets": { "$ref": "#/$defs/asset_list" },
+        "services": { "$ref": "#/$defs/asset_list" }
       }
     }
   },

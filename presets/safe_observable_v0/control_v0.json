@@ -236,11 +236,84 @@
         "path": ".claude/hooks/mova-guard.js",
         "mode": "copy_through",
         "source_path": ".claude/hooks/mova-guard.js"
+      },
+      {
+        "path": ".claude/hooks/mova-observe.js",
+        "mode": "copy_through",
+        "source_path": ".claude/hooks/mova-observe.js"
       }
     ],
     "workflows": [],
     "docs": [],
     "dotfiles": [],
-    "schemas": []
+    "schemas": [],
+    "services": [
+      {
+        "mode": "copy_through",
+        "path": "services/env_resolver.js",
+        "source_path": "services/env_resolver.js"
+      },
+      {
+        "mode": "copy_through",
+        "path": "services/preset_manager.js",
+        "source_path": "services/preset_manager.js"
+      },
+      {
+        "mode": "copy_through",
+        "path": "services/episode_metrics_collector.js",
+        "source_path": "services/episode_metrics_collector.js"
+      },
+      {
+        "mode": "copy_through",
+        "path": "services/dashboard_server.js",
+        "source_path": "services/dashboard_server.js"
+      },
+      {
+        "mode": "copy_through",
+        "path": "services/hot_reloader.js",
+        "source_path": "services/hot_reloader.js"
+      }
+    ],
+    "presets": [
+      {
+        "mode": "copy_through",
+        "path": ".claude/presets/base.preset_v0.json",
+        "source_path": ".claude/presets/base.preset_v0.json"
+      },
+      {
+        "mode": "copy_through",
+        "path": ".claude/presets/development.preset_v0.json",
+        "source_path": ".claude/presets/development.preset_v0.json"
+      },
+      {
+        "mode": "copy_through",
+        "path": ".claude/presets/production.preset_v0.json",
+        "source_path": ".claude/presets/production.preset_v0.json"
+      }
+    ]
+  },
+  "environs": {
+    "AUTO_MODE": "${AUTO_MODE:false}",
+    "DEBUG_LEVEL": "${DEBUG_LEVEL:minimal}",
+    "MASK_SENSITIVE": "${MASK_SENSITIVE:true}",
+    "DASHBOARD_ENABLED": "${DASHBOARD_ENABLED:false}",
+    "DASHBOARD_PORT": "${DASHBOARD_PORT:2773}",
+    "HOT_RELOAD_ENABLED": "${HOT_RELOAD_ENABLED:false}"
+  },
+  "monitoring": {
+    "enabled": "${DASHBOARD_ENABLED:false}",
+    "port": "${DASHBOARD_PORT:2773}",
+    "metrics": [
+      "episodes_count",
+      "error_rate",
+      "performance"
+    ],
+    "update_interval": 30000
+  },
+  "versioning": {
+    "enabled": "${HOT_RELOAD_ENABLED:false}",
+    "backup_on_change": true,
+    "auto_update_check": false,
+    "rollback_levels": 5
   }
 }
