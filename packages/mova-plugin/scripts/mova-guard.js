@@ -2,6 +2,7 @@
 /**
  * MOVA Guard - Validation and protection hooks
  * Adapted for plugin architecture with ${CLAUDE_PLUGIN_ROOT} support
+ * Phase 2: Enhanced with severity levels and security event recording
  */
 
 const { spawnSync } = require('node:child_process');
@@ -11,10 +12,20 @@ const fs = require('node:fs');
 const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(__dirname, '..');
 const PROJECT_DIR = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const CONTROL_FILE = path.join(PROJECT_DIR, 'mova', 'control_v0.json');
+const SECURITY_EVENTS_PATH = path.join(PLUGIN_ROOT, 'config', 'security-events.json');
 
 const args = new Set(process.argv.slice(2));
 const taskIndex = process.argv.indexOf('--task');
 const task = taskIndex >= 0 ? process.argv[taskIndex + 1] : undefined;
+
+// Severity levels with priorities
+const SEVERITY_PRIORITY = {
+  info: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  critical: 4
+};
 
 function loadControlConfig() {
   try {
@@ -27,13 +38,72 @@ function loadControlConfig() {
   return null;
 }
 
-function block(message) {
+function loadSecurityEvents() {
+  try {
+    if (fs.existsSync(SECURITY_EVENTS_PATH)) {
+      return JSON.parse(fs.readFileSync(SECURITY_EVENTS_PATH, 'utf8'));
+    }
+  } catch {}
+  return null;
+}
+
+function block(message, severity = 'high', ruleId = null) {
+  // Record security event before blocking
+  recordSecurityEvent('guardrail_violation', severity, ['block'], message, ruleId);
   process.stderr.write(JSON.stringify({ block: true, message }));
   process.exit(2);
 }
 
 function feedback(message, suppressOutput = true) {
   process.stdout.write(JSON.stringify({ feedback: message, suppressOutput }));
+}
+
+function warn(message, severity = 'medium', ruleId = null) {
+  recordSecurityEvent('guardrail_violation', severity, ['warn', 'log'], message, ruleId);
+  feedback(`[MOVA] ⚠ ${message}`, false);
+}
+
+function recordSecurityEvent(eventType, severity, actions, details, ruleId = null) {
+  const episodesDir = path.join(PROJECT_DIR, '.mova', 'episodes');
+  const currentSessionPath = path.join(episodesDir, '.current_session_id');
+
+  if (!fs.existsSync(currentSessionPath)) return;
+
+  try {
+    const sessionId = fs.readFileSync(currentSessionPath, 'utf8').trim();
+    const sessionDir = path.join(episodesDir, sessionId);
+
+    if (!fs.existsSync(sessionDir)) return;
+
+    const episode = {
+      episode_id: `ep_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      episode_type: 'security_event',
+      mova_version: '4.1.1',
+      recorded_at: new Date().toISOString(),
+      executor: {
+        executor_id: 'mova-guard',
+        role: 'validator',
+        executor_kind: 'service'
+      },
+      result_status: actions.includes('block') ? 'failed' : 'completed',
+      result_summary: details,
+      security_event: {
+        event_type: eventType,
+        severity: severity,
+        actions_taken: actions,
+        detection_confidence: 1.0,
+        rule_id: ruleId
+      }
+    };
+
+    fs.appendFileSync(
+      path.join(sessionDir, 'events.jsonl'),
+      JSON.stringify(episode) + '\n',
+      'utf8'
+    );
+  } catch {
+    // Silently fail - don't block on logging errors
+  }
 }
 
 function tailLines(text, count) {
@@ -54,7 +124,11 @@ function guardMainBranch() {
   const res = runCommand('git', ['branch', '--show-current']);
   const branch = (res.stdout || '').trim();
   if (branch === 'main' || branch === 'master') {
-    block('Cannot edit files on main/master branch. Create a feature branch first.');
+    block(
+      'Cannot edit files on main/master branch. Create a feature branch first.',
+      'high',
+      'block-main-branch'
+    );
   }
 }
 
@@ -62,36 +136,52 @@ function guardDangerousBash() {
   const input = process.env.CLAUDE_TOOL_INPUT || '';
   const config = loadControlConfig();
 
-  // Default dangerous patterns
+  // Default dangerous patterns with severity
   const defaultPatterns = [
-    /rm\s+-rf\s+[\/~]/i,
-    /sudo\s+/i,
-    /curl\s+[^|]+\|\s*sh/i,
-    /wget\s+[^|]+\|\s*sh/i,
-    /mkfs\./i,
-    /dd\s+if=/i,
-    /chmod\s+777/i,
-    /chown\s+root/i,
-    />\s*\/etc\//i,
-    /\beval\s*\(/i
+    { pattern: /rm\s+-rf\s+[\/~]/i, severity: 'critical', id: 'block-rm-rf-root' },
+    { pattern: /sudo\s+/i, severity: 'high', id: 'block-sudo' },
+    { pattern: /curl\s+[^|]+\|\s*sh/i, severity: 'critical', id: 'block-pipe-to-shell' },
+    { pattern: /wget\s+[^|]+\|\s*sh/i, severity: 'critical', id: 'block-pipe-to-shell' },
+    { pattern: /mkfs\./i, severity: 'critical', id: 'block-mkfs' },
+    { pattern: /dd\s+if=/i, severity: 'critical', id: 'block-dd' },
+    { pattern: /chmod\s+777/i, severity: 'high', id: 'block-chmod-777' },
+    { pattern: /chown\s+root/i, severity: 'high', id: 'block-chown-root' },
+    { pattern: />\s*\/etc\//i, severity: 'critical', id: 'block-write-etc' },
+    { pattern: /\beval\s*\(/i, severity: 'high', id: 'block-eval' }
   ];
 
-  // Check against guardrail rules if available
+  // Check against guardrail rules if available (higher priority)
   if (config?.guardrail_rules) {
     for (const rule of config.guardrail_rules) {
-      if (rule.target?.tool === 'Bash' && rule.target?.pattern && rule.effect === 'deny') {
+      if (rule.enabled === false) continue;
+      if (rule.target?.tool === 'Bash' && rule.target?.pattern) {
         const pattern = new RegExp(rule.target.pattern, 'i');
         if (pattern.test(input)) {
-          block(`Guardrail [${rule.rule_id}]: ${rule.description || 'Blocked by policy'}`);
+          const severity = rule.severity || 'high';
+          const actions = rule.on_violation || [];
+
+          if (rule.effect === 'deny' || actions.includes('block')) {
+            block(
+              `Guardrail [${rule.rule_id}]: ${rule.description || 'Blocked by policy'}`,
+              severity,
+              rule.rule_id
+            );
+          } else if (rule.effect === 'warn' || actions.includes('warn')) {
+            warn(rule.description || rule.rule_id, severity, rule.rule_id);
+          }
         }
       }
     }
   }
 
   // Check default patterns
-  for (const pattern of defaultPatterns) {
+  for (const { pattern, severity, id } of defaultPatterns) {
     if (pattern.test(input)) {
-      block('Potentially dangerous command blocked by MOVA guard.');
+      block(
+        'Potentially dangerous command blocked by MOVA guard.',
+        severity,
+        id
+      );
     }
   }
 }
@@ -104,8 +194,11 @@ function evaluateGuardrailRules() {
   const input = process.env.CLAUDE_TOOL_INPUT || '';
   const filePath = process.env.CLAUDE_TOOL_INPUT_FILE_PATH || '';
 
+  // Collect all violations and sort by severity
+  const violations = [];
+
   for (const rule of config.guardrail_rules) {
-    if (!rule.enabled && rule.enabled !== undefined) continue;
+    if (rule.enabled === false) continue;
 
     let matches = false;
 
@@ -133,19 +226,52 @@ function evaluateGuardrailRules() {
     }
 
     if (matches) {
-      const actions = rule.on_violation || [];
+      violations.push(rule);
+    }
+  }
 
-      if (actions.includes('block') || rule.effect === 'deny') {
-        block(`Guardrail [${rule.rule_id}]: ${rule.description || 'Blocked'}`);
-      }
+  // Sort by severity (highest first)
+  violations.sort((a, b) => {
+    return (SEVERITY_PRIORITY[b.severity] || 0) - (SEVERITY_PRIORITY[a.severity] || 0);
+  });
 
-      if (actions.includes('warn') || rule.effect === 'warn') {
-        feedback(`[MOVA] Warning: ${rule.description || rule.rule_id}`, false);
-      }
+  // Process violations
+  for (const rule of violations) {
+    const severity = rule.severity || 'medium';
+    const actions = rule.on_violation || [];
 
-      if (actions.includes('log') || rule.effect === 'log_only') {
-        // Logging is handled by mova-observe
-      }
+    if (actions.includes('block') || rule.effect === 'deny') {
+      block(
+        `Guardrail [${rule.rule_id}]: ${rule.description || 'Blocked'}`,
+        severity,
+        rule.rule_id
+      );
+    }
+
+    if (actions.includes('warn') || rule.effect === 'warn') {
+      warn(rule.description || rule.rule_id, severity, rule.rule_id);
+    }
+
+    if (actions.includes('log') || rule.effect === 'log_only') {
+      recordSecurityEvent(
+        'guardrail_violation',
+        severity,
+        ['log'],
+        rule.description || rule.rule_id,
+        rule.rule_id
+      );
+    }
+
+    if (actions.includes('require_confirmation')) {
+      // Log that confirmation was required
+      recordSecurityEvent(
+        'guardrail_violation',
+        severity,
+        ['require_confirmation'],
+        `Confirmation required: ${rule.description || rule.rule_id}`,
+        rule.rule_id
+      );
+      feedback(`[MOVA] Confirmation required: ${rule.description || rule.rule_id}`, false);
     }
   }
 }
