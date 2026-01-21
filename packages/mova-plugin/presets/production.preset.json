@@ -1,4 +1,5 @@
 {
+  "preset_id": "production",
   "$preset": "production",
   "$inherit": "base",
   "description": "Locked-down production with audit logging",

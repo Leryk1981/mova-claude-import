@@ -1,4 +1,5 @@
 {
+  "preset_id": "development",
   "$preset": "development",
   "$inherit": "base",
   "description": "Full development access with verbose logging",

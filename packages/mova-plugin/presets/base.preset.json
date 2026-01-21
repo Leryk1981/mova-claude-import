@@ -1,4 +1,5 @@
 {
+  "preset_id": "base",
   "$preset": "base",
   "description": "Minimal safe configuration",
   "policy": {
