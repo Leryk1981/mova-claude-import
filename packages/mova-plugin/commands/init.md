@@ -5,37 +5,91 @@ allowed-tools:
   - Read
   - Write
   - Bash
+  - AskUserQuestion
 ---
 
 Initialize MOVA structure in the current project.
 
-## Steps:
-1. Check if mova/control_v0.json exists
-2. If exists, ask user: overwrite or merge?
-3. Create directory structure:
-   - mova/control_v0.json (from template)
+## Interactive Wizard
+
+If no --preset is provided, run the interactive wizard:
+
+1. **Check existing configuration**
+   - If mova/control_v0.json exists, ask: "Overwrite, Merge, or Cancel?"
+
+2. **Select Security Preset**
+   Ask user to choose using AskUserQuestion:
+   ```
+   Question: "Which security preset should we use?"
+   Options:
+     - Development (Recommended for local work): Full tool access, verbose logging, dashboard enabled
+     - Staging: Sandboxed environment, moderate logging, some confirmations required
+     - Production: Restricted access, audit logging, OTEL export, confirmations required for most operations
+   ```
+
+3. **Enable Dashboard?**
+   Ask user:
+   ```
+   Question: "Enable real-time monitoring dashboard?"
+   Options:
+     - Yes: Start WebSocket dashboard on port 2773
+     - No (Recommended): Dashboard disabled by default
+   ```
+
+4. **Enable OTEL Export?**
+   Ask user:
+   ```
+   Question: "Enable OpenTelemetry metrics export?"
+   Options:
+     - Yes: Export metrics to OTLP endpoint (configure OTEL_EXPORTER_OTLP_ENDPOINT)
+     - No (Recommended): Local metrics only
+   ```
+
+## Apply Configuration
+
+After wizard completes:
+
+1. Create directory structure:
+   - mova/control_v0.json
    - .mova/episodes/
-4. Apply preset if specified (default: base)
-5. Add MOVA_CONTROL_ENTRY marker to CLAUDE.md if not present
+   - .mova/backups/
 
-## Interactive Preset Selection (if no --preset):
+2. Apply selected preset
 
-Ask user to select:
-- Development: full access, verbose logging, dashboard enabled
-- Staging: sandboxed, moderate logging
-- Production: restricted, audit logging, OTEL enabled
+3. Update CLAUDE.md with MOVA_CONTROL_ENTRY marker if not present
 
-## Arguments:
-- $1: --preset flag (optional)
-- $2: preset name (base|development|production)
+## Direct Preset Application
 
-## Execution:
+If --preset is provided, skip wizard and apply directly:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/services/preset_manager.js init $ARGUMENTS
+node ${CLAUDE_PLUGIN_ROOT}/services/preset_manager.js init --preset $2
 ```
 
-## Output:
-- Summary of created files
-- Active configuration overview
-- Next steps hint
+## Output Summary
+
+Display:
+```
+MOVA Initialized Successfully
+
+Configuration:
+  Profile: mova_claude_control_v1 v1.0.0
+  Preset: [selected preset]
+  Location: mova/control_v0.json
+
+Directories Created:
+  - mova/
+  - .mova/episodes/
+  - .mova/backups/
+
+Features Enabled:
+  - Observability: [enabled/disabled]
+  - Dashboard: [enabled/disabled] (port [port])
+  - OTEL Export: [enabled/disabled]
+  - Human-in-the-Loop: escalation threshold [level]
+
+Next Steps:
+  - Run /mova:status to verify configuration
+  - Run /mova:lint to validate structure
+  - Use /mova:preset:list to see available presets
+```

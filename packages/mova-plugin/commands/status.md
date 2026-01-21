@@ -6,23 +6,56 @@ allowed-tools:
 
 Show minimal MOVA status for current project.
 
-## Check:
+## Check Files
+
 1. Read mova/control_v0.json for profile info
-2. Read .mova/episodes/index.jsonl for session info
-3. Count security events from current session
+2. Read .mova/episodes/.current_session_id for active session
+3. Count episodes in current session
+4. Check .mova/episodes/index.jsonl for recent activity
 
-## Output format:
+## Output Format (Single Line Status)
+
+If MOVA is active:
 ```
-MOVA: [active|inactive|error]
-Profile: [profile_id] v[version]
-Session: [session_id] | [n] events | [duration]
-Security: [n] events ([critical]/[high]/[medium]/[low])
+MOVA: active | Profile: [profile_id] v[version] | Session: [id] ([n] events, [duration])
 ```
 
-## Example:
+If MOVA is inactive (no control file):
 ```
-MOVA: active
-Profile: mova_claude_control_v1 v1.0.0
-Session: sess_20260121_abc | 15 events | 5m 23s
-Security: 2 events (0/1/1/0)
+MOVA: inactive | Run /mova:init to initialize
 ```
+
+If MOVA has errors:
+```
+MOVA: error | [error description]
+```
+
+## Extended Status (if session active)
+
+```
+MOVA Status
+───────────────────────────────────
+Status:     active
+Profile:    [profile_id] v[version]
+Preset:     [preset name if detected]
+───────────────────────────────────
+Session:    [session_id]
+Events:     [count]
+Duration:   [hh:mm:ss]
+───────────────────────────────────
+Security:   [n] events
+  Critical: [n]  High: [n]
+  Medium:   [n]  Low:  [n]
+───────────────────────────────────
+Features:
+  Observability: [on/off]
+  Dashboard:     [on/off] (port [n])
+  OTEL Export:   [on/off]
+  HITL:          threshold [level]
+```
+
+## Notes
+
+- Keep output minimal by default
+- Show extended status only if explicitly requested or if issues detected
+- Security event count should highlight non-zero critical/high counts
