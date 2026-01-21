@@ -2,6 +2,7 @@
 /**
  * MOVA Observe - Event collection and episode recording
  * Adapted for plugin architecture with MOVA 4.1.1 episode structure
+ * Phase 3: Enhanced with OTEL export and improved correlation
  */
 
 const fs = require('node:fs');
@@ -10,6 +11,7 @@ const crypto = require('node:crypto');
 
 const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(__dirname, '..');
 const PROJECT_DIR = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const CONTROL_FILE = path.join(PROJECT_DIR, 'mova', 'control_v0.json');
 
 const KEY_RE = /(api[_-]?key|token|secret|password|authorization|bearer)/i;
 const INLINE_SECRET_RE = /(sk-[a-zA-Z0-9]{8,})/g;
@@ -22,6 +24,21 @@ const isFinalize = args.includes('--finalize');
 function readArg(name) {
   const idx = args.indexOf(name);
   return idx === -1 ? undefined : args[idx + 1];
+}
+
+function loadControlConfig() {
+  try {
+    if (fs.existsSync(CONTROL_FILE)) {
+      return JSON.parse(fs.readFileSync(CONTROL_FILE, 'utf8'));
+    }
+  } catch {}
+  return null;
+}
+
+function isOtelEnabled() {
+  const config = loadControlConfig();
+  return config?.observability?.otel_enabled === true ||
+         process.env.MOVA_OTEL_ENABLED === 'true';
 }
 
 const config = {
@@ -186,8 +203,9 @@ function finalizeSession() {
     episodes_by_type: {},
     episodes_by_status: {},
     tools_used: {},
-    security_events: { total: 0, by_severity: {} },
-    duration_ms: 0
+    security_events: { total: 0, by_severity: {}, by_type: {} },
+    duration_ms: 0,
+    errors: 0
   };
 
   for (const ep of events) {
@@ -198,6 +216,10 @@ function finalizeSession() {
     // Count by status
     const status = ep.result_status || 'unknown';
     summary.episodes_by_status[status] = (summary.episodes_by_status[status] || 0) + 1;
+
+    if (status === 'failed') {
+      summary.errors++;
+    }
 
     // Count tools
     if (ep.result_details?.tool_name) {
@@ -210,6 +232,9 @@ function finalizeSession() {
       summary.security_events.total++;
       const sev = ep.security_event.severity || 'unknown';
       summary.security_events.by_severity[sev] = (summary.security_events.by_severity[sev] || 0) + 1;
+
+      const evtType = ep.security_event.event_type || 'unknown';
+      summary.security_events.by_type[evtType] = (summary.security_events.by_type[evtType] || 0) + 1;
     }
   }
 
@@ -226,16 +251,30 @@ function finalizeSession() {
     ts: iso,
     session_id: sessionId,
     event: 'session_end',
-    episodes: events.length
+    episodes: events.length,
+    duration_ms: summary.duration_ms,
+    errors: summary.errors
   }) + '\n', 'utf8');
+
+  // Export to OTEL if enabled
+  if (isOtelEnabled()) {
+    try {
+      const OtelExporter = require(path.join(PLUGIN_ROOT, 'services', 'otel_exporter.js'));
+      const exporter = new OtelExporter();
+      exporter.exportSummary(summary);
+    } catch {
+      // OTEL export failed, continue silently
+    }
+  }
 
   // Clean up current session markers
   try { fs.unlinkSync(currentPath); } catch {}
   try { fs.unlinkSync(path.join(root, '.correlation_id')); } catch {}
 
   const durationSec = Math.round(summary.duration_ms / 1000);
+  const secEvents = summary.security_events.total;
   process.stdout.write(JSON.stringify({
-    feedback: `[MOVA] Session ended | ${events.length} events | ${durationSec}s`,
+    feedback: `[MOVA] Session ended | ${events.length} events | ${durationSec}s | ${secEvents} security`,
     suppressOutput: true
   }));
 }
@@ -322,8 +361,20 @@ function recordEpisode() {
     session_id: sessionId,
     episode_id: episode.episode_id,
     event_type: config.eventType,
-    tool: episode.result_details.tool_name
+    tool: episode.result_details.tool_name,
+    status: episode.result_status
   }) + '\n', 'utf8');
+
+  // Export to OTEL if enabled
+  if (isOtelEnabled()) {
+    try {
+      const OtelExporter = require(path.join(PLUGIN_ROOT, 'services', 'otel_exporter.js'));
+      const exporter = new OtelExporter();
+      exporter.exportEpisode(episode);
+    } catch {
+      // OTEL export failed, continue silently
+    }
+  }
 }
 
 function main() {
