@@ -37,11 +37,16 @@
   ],
   "human_in_the_loop": {
     "escalation_threshold": "medium",
+    "auto_approve": ["Read", "Glob", "Grep", "WebSearch"],
     "always_confirm": [
-      { "tool": "Edit" },
-      { "tool": "Write" },
-      { "tool": "Bash" }
-    ]
+      { "tool": "Edit", "description": "File edit operation" },
+      { "tool": "Write", "description": "File write operation" },
+      { "tool": "Bash", "description": "Shell command execution" },
+      { "tool": "Bash", "pattern": "rm|mv|chmod", "description": "Destructive shell operation" },
+      { "tool": "Write", "path_glob": "**/.env*", "description": "Environment file modification" },
+      { "tool": "Edit", "path_glob": "**/secret*", "description": "Secret file modification" }
+    ],
+    "confirmation_timeout_ms": 60000
   },
   "observability": {
     "enabled": true,

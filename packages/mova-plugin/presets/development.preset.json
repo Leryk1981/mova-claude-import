@@ -24,7 +24,12 @@
   ],
   "human_in_the_loop": {
     "escalation_threshold": "critical",
-    "auto_approve": ["Read", "Glob", "Grep", "Edit", "Write"]
+    "auto_approve": ["Read", "Glob", "Grep", "Edit", "Write", "WebSearch", "WebFetch"],
+    "always_confirm": [
+      { "tool": "Bash", "pattern": "rm\\s+-rf", "description": "Recursive force delete" },
+      { "tool": "Bash", "pattern": "sudo", "description": "Privileged command" }
+    ],
+    "confirmation_timeout_ms": 30000
   },
   "monitoring": {
     "enabled": true,

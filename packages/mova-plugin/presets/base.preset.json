@@ -25,8 +25,9 @@
   ],
   "human_in_the_loop": {
     "escalation_threshold": "high",
-    "auto_approve": [],
-    "always_confirm": []
+    "auto_approve": ["Read", "Glob", "Grep"],
+    "always_confirm": [],
+    "confirmation_timeout_ms": 60000
   },
   "observability": {
     "enabled": true,

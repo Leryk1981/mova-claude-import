@@ -3,6 +3,7 @@
  * MOVA Guard - Validation and protection hooks
  * Adapted for plugin architecture with ${CLAUDE_PLUGIN_ROOT} support
  * Phase 2: Enhanced with severity levels and security event recording
+ * Phase 4: Human-in-the-Loop confirmation logic
  */
 
 const { spawnSync } = require('node:child_process');
@@ -61,6 +62,118 @@ function feedback(message, suppressOutput = true) {
 function warn(message, severity = 'medium', ruleId = null) {
   recordSecurityEvent('guardrail_violation', severity, ['warn', 'log'], message, ruleId);
   feedback(`[MOVA] ⚠ ${message}`, false);
+}
+
+// Human-in-the-Loop: Check if tool/operation requires confirmation
+function checkHumanInTheLoop() {
+  const config = loadControlConfig();
+  if (!config?.human_in_the_loop) return;
+
+  const hitl = config.human_in_the_loop;
+  const toolName = process.env.CLAUDE_TOOL_NAME || '';
+  const input = process.env.CLAUDE_TOOL_INPUT || '';
+  const filePath = process.env.CLAUDE_TOOL_INPUT_FILE_PATH || '';
+
+  // Check if tool is auto-approved
+  if (hitl.auto_approve && Array.isArray(hitl.auto_approve)) {
+    for (const approved of hitl.auto_approve) {
+      if (typeof approved === 'string' && toolName === approved) {
+        return; // Auto-approved, no confirmation needed
+      }
+    }
+  }
+
+  // Check if tool requires confirmation
+  if (hitl.always_confirm && Array.isArray(hitl.always_confirm)) {
+    for (const rule of hitl.always_confirm) {
+      let requiresConfirm = false;
+
+      if (typeof rule === 'string') {
+        // Simple tool name match
+        requiresConfirm = toolName === rule;
+      } else if (typeof rule === 'object') {
+        // Complex rule with tool and optional pattern
+        if (rule.tool) {
+          const toolPattern = new RegExp(rule.tool, 'i');
+          if (toolPattern.test(toolName)) {
+            if (rule.pattern) {
+              const inputPattern = new RegExp(rule.pattern, 'i');
+              requiresConfirm = inputPattern.test(input);
+            } else if (rule.path_glob && filePath) {
+              const glob = rule.path_glob
+                .replace(/\*\*/g, '.*')
+                .replace(/\*/g, '[^/]*')
+                .replace(/\./g, '\\.');
+              const pathPattern = new RegExp(glob, 'i');
+              requiresConfirm = pathPattern.test(filePath);
+            } else {
+              requiresConfirm = true;
+            }
+          }
+        }
+      }
+
+      if (requiresConfirm) {
+        const description = typeof rule === 'object' && rule.description
+          ? rule.description
+          : `${toolName} operation`;
+
+        recordSecurityEvent(
+          'guardrail_violation',
+          'medium',
+          ['require_confirmation'],
+          `Human confirmation required: ${description}`,
+          'human-in-the-loop'
+        );
+
+        // Output confirmation request
+        feedback(`[MOVA] ⚠ Confirmation required: ${description}`, false);
+        return;
+      }
+    }
+  }
+
+  // Check escalation threshold against current severity
+  if (hitl.escalation_threshold) {
+    const thresholdPriority = SEVERITY_PRIORITY[hitl.escalation_threshold] || 3;
+    // This is checked during guardrail evaluation, not here
+  }
+}
+
+// Human-in-the-Loop: Check if operation is destructive
+function isDestructiveOperation() {
+  const toolName = process.env.CLAUDE_TOOL_NAME || '';
+  const input = process.env.CLAUDE_TOOL_INPUT || '';
+
+  const destructivePatterns = [
+    { tool: 'Bash', patterns: [/\brm\b/, /\bmv\b/, /\bchmod\b/, /\bchown\b/, /\bkill\b/] },
+    { tool: 'Write', patterns: [/\.env/, /secret/, /credential/, /\.pem/, /\.key/] },
+    { tool: 'Edit', patterns: [/\.env/, /secret/, /credential/] }
+  ];
+
+  for (const { tool, patterns } of destructivePatterns) {
+    if (toolName.includes(tool)) {
+      for (const pattern of patterns) {
+        if (pattern.test(input)) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+// Get escalation message based on severity
+function getEscalationMessage(severity, context) {
+  const messages = {
+    info: `[MOVA] Info: ${context}`,
+    low: `[MOVA] Notice: ${context}`,
+    medium: `[MOVA] ⚠ Warning: ${context}`,
+    high: `[MOVA] ⛔ High severity: ${context}`,
+    critical: `[MOVA] 🚨 CRITICAL: ${context}`
+  };
+  return messages[severity] || messages.medium;
 }
 
 function recordSecurityEvent(eventType, severity, actions, details, ruleId = null) {
@@ -313,16 +426,62 @@ function postTest() {
   }
 }
 
+// Evaluate Human-in-the-Loop escalation based on severity
+function evaluateEscalation() {
+  const config = loadControlConfig();
+  if (!config?.human_in_the_loop) return;
+
+  const hitl = config.human_in_the_loop;
+  const toolName = process.env.CLAUDE_TOOL_NAME || '';
+
+  // Check if this is a destructive operation
+  if (isDestructiveOperation()) {
+    const thresholdPriority = SEVERITY_PRIORITY[hitl.escalation_threshold] || 3;
+    const operationSeverity = 'high';
+
+    if (SEVERITY_PRIORITY[operationSeverity] >= thresholdPriority) {
+      recordSecurityEvent(
+        'guardrail_violation',
+        operationSeverity,
+        ['require_confirmation'],
+        `Destructive operation detected: ${toolName}`,
+        'destructive-operation'
+      );
+
+      feedback(getEscalationMessage(operationSeverity, `Destructive ${toolName} operation`), false);
+    }
+  }
+}
+
+// Emit inline status feedback
+function emitInlineStatus(phase, status, details = '') {
+  const statusSymbols = {
+    pass: '✓',
+    fail: '✗',
+    warn: '⚠',
+    skip: '○'
+  };
+  const symbol = statusSymbols[status] || '•';
+  const message = details ? `[MOVA] ${phase} ${symbol} ${details}` : `[MOVA] ${phase} ${symbol}`;
+  feedback(message, status === 'pass');
+}
+
 function main() {
   switch (task) {
     case 'pre-main':
       guardMainBranch();
+      emitInlineStatus('pre-main', 'pass');
       break;
     case 'pre-bash':
       guardDangerousBash();
+      emitInlineStatus('pre-bash', 'pass');
       break;
     case 'evaluate-rules':
       evaluateGuardrailRules();
+      break;
+    case 'check-hitl':
+      checkHumanInTheLoop();
+      evaluateEscalation();
       break;
     case 'post-format':
       postFormat();
@@ -332,7 +491,15 @@ function main() {
       break;
     default:
       if (args.has('--help')) {
-        console.log('Usage: mova-guard.js --task <pre-main|pre-bash|evaluate-rules|post-format|post-test>');
+        console.log('Usage: mova-guard.js --task <pre-main|pre-bash|evaluate-rules|check-hitl|post-format|post-test>');
+        console.log('');
+        console.log('Tasks:');
+        console.log('  pre-main       Check if on main/master branch');
+        console.log('  pre-bash       Check for dangerous bash commands');
+        console.log('  evaluate-rules Evaluate all guardrail rules');
+        console.log('  check-hitl     Check Human-in-the-Loop requirements');
+        console.log('  post-format    Run prettier on changed files');
+        console.log('  post-test      Run tests for changed files');
       }
   }
 }
